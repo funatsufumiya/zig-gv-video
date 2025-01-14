@@ -5,7 +5,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const gvvideo_module = b.createModule(.{
-        .root_source_file = b.path("../src/main.zig"),
+        .root_source_file = b.path("../src/root.zig"),
     });
 
     const lib = b.addExecutable(.{
