@@ -54,7 +54,9 @@ pub const RGBColor = struct {
 pub const GVVideo = struct {
     header: GVHeader,
     address_size_blocks: []GVAddressSizeBlock,
+    reader: std.io.StreamSource.Reader,
     stream: *std.io.StreamSource,
+    allocator: std.mem.Allocator,
 
     fn readFloat(reader: anytype) !f32 {
         const bytes = try reader.readBytesNoEof(4);
@@ -127,6 +129,8 @@ pub const GVVideo = struct {
             .header = header,
             .address_size_blocks = blocks,
             .stream = stream,
+            .reader = reader,
+            .allocator = allocator,
         };
     }
 
