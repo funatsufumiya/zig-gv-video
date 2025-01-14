@@ -34,12 +34,18 @@ pub fn build(b: *std.Build) void {
     // running `zig build`).
     b.installArtifact(lib);
 
+    const gvvideo_module = b.createModule(.{
+        .root_source_file = b.path("src/root.zig"),
+    });
+
     const exe = b.addExecutable(.{
         .name = "gvvideo-example",
         .root_source_file = b.path("examples/example.zig"),
         .target = target,
         .optimize = optimize,
     });
+    exe.root_module.addImport("gvvideo", gvvideo_module);
+    exe.root_module.addImport("ezdxt", ezdxt_module);
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
