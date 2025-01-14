@@ -122,10 +122,15 @@ pub const GVVideo = struct {
         };
     }
 
-    pub fn loadFromFile(path: []const u8) !GVVideo {
-        _ = path;
-        // @compileError("Unimplemented");
-        @panic("Unimplemented");
+    pub fn loadFromFile(allocator: std.mem.Allocator, path: []const u8) !GVVideo {
+        // Open the file with read-only access
+        const file = try std.fs.cwd().openFile(path, .{});
+        
+        // Create a stream source from the file
+        var stream = std.io.StreamSource{ .file = file };
+        
+        // Use the existing load function with a general purpose allocator
+        return GVVideo.load(allocator, &stream);
     }
 
     pub fn readFrame(self: *GVVideo, frame_id: u32) ![]u32 {

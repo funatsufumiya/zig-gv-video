@@ -9,6 +9,11 @@ Ported from [rust-gv-video](https://github.com/funatsufumiya/rust-gv-video)
 ```bash
 $ zig build
 ```
+## Test
+
+```bash
+$ zig build test
+```
 
 ## Run Example
 

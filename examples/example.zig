@@ -11,13 +11,11 @@ pub fn main() !void {
     // load video
     const file = try std.fs.cwd().openFile("test_asset/test-10px.gv", .{});
     defer file.close();
-
     var ss = std.io.StreamSource{ .file = file };
-
     var video = try gvvideo.GVVideo.load(allocator, &ss);
 
     // or, simply use load_from_file
-    // var video = try gvvideo.GVVideo.loadFromFile("test_asset/test-10px.gv");
+    // var video = try gvvideo.GVVideo.loadFromFile(allocator, "test_asset/test-10px.gv");
 
     const w: u32 = 10;
     const h: u32 = 10;
