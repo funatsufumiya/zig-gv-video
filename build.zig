@@ -19,6 +19,11 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("../ezdxt/src/main.zig"),
     });
 
+    const lz4_dependency = b.dependency("lz4", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
     const lib = b.addStaticLibrary(.{
         .name = "zig-gv-video",
         // In this case the main source file is merely a path, however, in more
@@ -28,6 +33,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     lib.root_module.addImport("ezdxt", ezdxt_module);
+    lib.root_module.linkLibrary(lz4_dependency.artifact("lz4"));
 
     // This declares intent for the library to be installed into the standard
     // location when the user invokes the "install" step (the default step when
