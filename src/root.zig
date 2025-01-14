@@ -180,18 +180,34 @@ pub const GVVideo = struct {
         }
     }
 
+    // decompress lz4 block and decode dxt, then return decompressed frame data (BGRA u32)
     pub fn readFrame(self: *GVVideo, frame_id: u32) ![]const u32 {
-        _ = self;
-        _ = frame_id;
-        // @compileError("Unimplemented");
-        @panic("Unimplemented");
+        if (frame_id >= self.header.frame_count) {
+            return error.EndOfVideo;
+        }
+
+        // std.debug.print("frame_id: {}\n", .{frame_id});
+        // std.debug.print("debug: {}\n", @as(i64, @intCast(-(self.header.frame_count * 16)))  + @as(i64, @intCast(frame_id * 16)));
+
+        const block = self.address_size_blocks[frame_id];
+        const address = block.address;
+        const size = block.size;
+
+        const data = try self.allocator.alloc(u8, size);
+        try self.stream.seekTo(address);
+        if (try self.stream.getPos() != address) {
+            return error.ErrorSeekingFrameData;
+        }
+        if (try self.reader.readAll(data) != size) {
+            return error.ErrorReadingFrameData;
+        }
+        return self.decodeLZ4AndDXT(data);
     }
 
+    /// decompress lz4 block and decode dxt, then return decompressed frame data (BGRA u32), at specified time
     pub fn readFrameAt(self: *GVVideo, duration: u64) ![]const u32 {
-        _ = self;
-        _ = duration;
-        // @compileError("Unimplemented");
-        @panic("Unimplemented");
+        const frame_id: u32 = @as(u32, @intFromFloat(self.header.fps * @as(f32, @floatFromInt(duration / 1_000_000_000))));
+        return self.readFrame(frame_id);
     }
 
     /// decompress lz4 block, then return compressed frame data (BC1, BC2, BC3, BC7)
@@ -204,10 +220,11 @@ pub const GVVideo = struct {
         const address = block.address;
         const size = block.size;
         const data = try self.allocator.alloc(u8, size);
-        if (try self.reader.seekTo(address) != address) {
+        try self.stream.seekTo(address);
+        if (try self.stream.getPos() != address) {
             return error.ErrorSeekingFrameData;
         }
-        if (try self.reader.readFull(data) != size) {
+        if (try self.reader.readAll(data) != size) {
             return error.ErrorReadingFrameData;
         }
         return self.decodeLZ4(data);
@@ -215,7 +232,7 @@ pub const GVVideo = struct {
 
     /// decompress lz4 block, then return compressed frame data (BC1, BC2, BC3, BC7), at specified time
     pub fn readFrameCompressedAt(self: *GVVideo, duration: u64) ![]const u8 {
-        const frame_id = (self.header.fps * duration) / 1_000_000_000;
+        const frame_id: u32 = @as(u32, @intFromFloat(self.header.fps * @as(f32, @floatFromInt(duration / 1_000_000_000))));
         return self.readFrameCompressed(frame_id);
     }
 

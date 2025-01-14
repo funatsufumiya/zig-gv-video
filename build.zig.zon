@@ -23,9 +23,9 @@
     // Once all dependencies are fetched, `zig build` no longer requires
     // internet connectivity.
     .dependencies = .{
-        .lz4 = .{
-            .url = "git+https://github.com/allyourcodebase/lz4.git?ref=1.10.0-1#12b7e6d70a54a5c0f984abdde02449aa2131c0f0",
-            .hash = "122070136dfb55e09993ea332aad05eed39a150e624d195bb4397a80531d50a8d176",
+        .@"zig-lz4" = .{
+            .url = "https://github.com/SnorlaxAssist/zig-lz4/archive/refs/heads/master.tar.gz",
+            .hash = "1220afb45edd635ec8f7ba098379df10c682bfed886bf1239c8f83bf0fc963ac273b",
         },
     },
     .paths = .{
