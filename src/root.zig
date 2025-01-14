@@ -145,7 +145,7 @@ pub const GVVideo = struct {
         return GVVideo.load(allocator, &stream);
     }
 
-    fn decodeLZ4AndDXT(self: *GVVideo, data: []u8) ![]u32 {
+    fn decodeLZ4AndDXT(self: *GVVideo, data: []u8) ![]const u32 {
         const width: usize = @intCast(self.header.width);
         const height: usize = @intCast(self.header.height);
         const format = self.header.format;
@@ -180,32 +180,43 @@ pub const GVVideo = struct {
         }
     }
 
-    pub fn readFrame(self: *GVVideo, frame_id: u32) ![]u32 {
+    pub fn readFrame(self: *GVVideo, frame_id: u32) ![]const u32 {
         _ = self;
         _ = frame_id;
         // @compileError("Unimplemented");
         @panic("Unimplemented");
     }
 
-    pub fn readFrameAt(self: *GVVideo, duration: u64) ![]u32 {
+    pub fn readFrameAt(self: *GVVideo, duration: u64) ![]const u32 {
         _ = self;
         _ = duration;
         // @compileError("Unimplemented");
         @panic("Unimplemented");
     }
 
-    pub fn readFrameCompressed(self: *GVVideo, frame_id: u32) ![]u8 {
-        _ = self;
-        _ = frame_id;
-        // @compileError("Unimplemented");
-        @panic("Unimplemented");
+    /// decompress lz4 block, then return compressed frame data (BC1, BC2, BC3, BC7)
+    pub fn readFrameCompressed(self: *GVVideo, frame_id: u32) ![]const u8 {
+        if (frame_id >= self.header.frame_count) {
+            return error.EndOfVideo;
+        }
+
+        const block = self.address_size_blocks[frame_id];
+        const address = block.address;
+        const size = block.size;
+        const data = try self.allocator.alloc(u8, size);
+        if (try self.reader.seekTo(address) != address) {
+            return error.ErrorSeekingFrameData;
+        }
+        if (try self.reader.readFull(data) != size) {
+            return error.ErrorReadingFrameData;
+        }
+        return self.decodeLZ4(data);
     }
 
-    pub fn readFrameCompressedAt(self: *GVVideo, duration: u64) ![]u8 {
-        _ = self;
-        _ = duration;
-        // @compileError("Unimplemented");
-        @panic("Unimplemented");
+    /// decompress lz4 block, then return compressed frame data (BC1, BC2, BC3, BC7), at specified time
+    pub fn readFrameCompressedAt(self: *GVVideo, duration: u64) ![]const u8 {
+        const frame_id = (self.header.fps * duration) / 1_000_000_000;
+        return self.readFrameCompressed(frame_id);
     }
 
     pub fn getDuration(self: *const GVVideo) u64 {
