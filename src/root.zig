@@ -61,6 +61,14 @@ pub const GVVideo = struct {
         return @as(f32, @bitCast(bytes));
     }
 
+    fn decodeLZ4(self: *GVVideo, data: []const u8) ![]u8 {
+        const width: usize = @intCast(self.header.width);
+        const height: usize = @intCast(self.header.height);
+        const uncompressed_size: usize = (width * height * 4);
+        const lz4_decoded_data = try lz4.decompress(data, uncompressed_size);
+        return lz4_decoded_data;
+    }
+
     pub fn load(allocator: std.mem.Allocator, stream: *std.io.StreamSource) !GVVideo {
         const reader = stream.reader();
 
