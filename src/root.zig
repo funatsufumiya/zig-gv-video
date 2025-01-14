@@ -147,10 +147,52 @@ pub const GVVideo = struct {
         @panic("Unimplemented");
     }
 
+    pub fn readFrameCompressed(self: *GVVideo, frame_id: u32) ![]u8 {
+        _ = self;
+        _ = frame_id;
+        // @compileError("Unimplemented");
+        @panic("Unimplemented");
+    }
+
+    pub fn readFrameCompressedAt(self: *GVVideo, duration: u64) ![]u8 {
+        _ = self;
+        _ = duration;
+        // @compileError("Unimplemented");
+        @panic("Unimplemented");
+    }
+
     pub fn getDuration(self: *const GVVideo) u64 {
         // Calculate duration in nanoseconds (frame_count / fps * 1_000_000_000)
         const seconds = @as(f64, @floatFromInt(self.header.frame_count)) / @as(f64, @floatCast(self.header.fps));
         return @intFromFloat(seconds * 1_000_000_000);
+    }
+
+    pub fn getWidth(self: *const GVVideo) u32 {
+        return self.header.width;
+    }
+
+    pub fn getHeight(self: *const GVVideo) u32 {
+        return self.header.height;
+    }
+
+    pub fn getResolution(self: *const GVVideo) [2]u32 {
+        return [2]u32{ self.header.width, self.header.height };
+    }
+
+    pub fn getFrameCount(self: *const GVVideo) u32 {
+        return self.header.frame_count;
+    }
+
+    pub fn getFps(self: *const GVVideo) f32 {
+        return self.header.fps;
+    }
+
+    pub fn getFormat(self: *const GVVideo) GVFormat {
+        return self.header.format;
+    }
+
+    pub fn getFrameBytes(self: *const GVVideo) u32 {
+        return self.header.frame_bytes;
     }
 
     pub fn deinit(self: *GVVideo, allocator: std.mem.Allocator) void {
