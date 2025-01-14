@@ -32,12 +32,66 @@ pub const RGBAColor = struct {
 pub const GVVideo = struct {
     header: GVHeader,
     address_size_blocks: []GVAddressSizeBlock,
-    reader: std.fs.File.Reader,
+    stream: *std.io.StreamSource,
 
-    pub fn load(reader: anytype) !GVVideo {
-        _ = reader;
-        // @compileError("Unimplemented");
-        @panic("Unimplemented");
+    pub fn load(allocator: std.mem.Allocator, stream: *std.io.StreamSource) !GVVideo {
+        const reader = stream.reader();
+
+        // Read header fields
+        const endian = std.builtin.Endian.little;
+        const width = try reader.readInt(u32, endian);
+        const height = try reader.readInt(u32, endian);
+        const frame_count = try reader.readInt(u32, endian);
+        const fps = @as(f32, @floatFromInt(try reader.readInt(u32, endian)));
+        const format_raw = try reader.readInt(u32, endian);
+        const frame_bytes = try reader.readInt(u32, endian);
+
+        // Convert format to enum
+        const format = switch (format_raw) {
+            1 => GVFormat.DXT1,
+            3 => GVFormat.DXT3,
+            5 => GVFormat.DXT5,
+            7 => GVFormat.BC7,
+            else => return error.InvalidFormat,
+        };
+
+        // Create header
+        const header = GVHeader{
+            .width = width,
+            .height = height,
+            .frame_count = frame_count,
+            .fps = fps,
+            .format = format,
+            .frame_bytes = frame_bytes,
+        };
+
+        // Get current position for address blocks calculation
+        const current_pos = try stream.getPos();
+        // direct specify the position
+
+        // Seek to address blocks (located at end of file)
+        const end_pos = try stream.getEndPos();
+        const blocks_offset = end_pos - (@as(u64, frame_count) * @sizeOf(GVAddressSizeBlock));
+        try stream.seekTo(blocks_offset);
+
+        // Read address size blocks
+        var blocks = try allocator.alloc(GVAddressSizeBlock, frame_count);
+        var i: usize = 0;
+        while (i < frame_count) : (i += 1) {
+            blocks[i] = .{
+                .address = try reader.readInt(u64, endian),
+                .size = try reader.readInt(u64, endian),
+            };
+        }
+
+        // Seek back to data start
+        try stream.seekTo(current_pos);
+
+        return GVVideo{
+            .header = header,
+            .address_size_blocks = blocks,
+            .stream = stream,
+        };
     }
 
     pub fn loadFromFile(path: []const u8) !GVVideo {
@@ -64,6 +118,10 @@ pub const GVVideo = struct {
         _ = self;
         // @compileError("Unimplemented");
         @panic("Unimplemented");
+    }
+
+    pub fn deinit(self: *GVVideo, allocator: std.mem.Allocator) void {
+        allocator.free(self.address_size_blocks);
     }
 };
 
