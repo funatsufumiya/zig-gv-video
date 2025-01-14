@@ -145,51 +145,6 @@ pub const GVVideo = struct {
         return GVVideo.load(allocator, &stream);
     }
 
-    // fn decode_lz4_and_dxt(&mut self, data: Vec<u8>) -> Vec<u32> {
-    //     let width = self.header.width as usize;
-    //     let height = self.header.height as usize;
-    //     let format = self.header.format;
-    //     let uncompressed_size_u8 = (width * height * 4) as usize;
-    //     let uncompressed_size_u32 = (width * height) as usize;
-    //     let lz4_decoded_data = lz4_flex::block::decompress(&data, uncompressed_size_u8).unwrap();
-    //     let mut result = vec![0; uncompressed_size_u32];
-
-    //     match format {
-    //         GVFormat::DXT1 => {
-    //             let res = texture2ddecoder::decode_bc1(&lz4_decoded_data, width, height, &mut result);
-    //             if res.is_err() {
-    //                 panic!("Error decoding DXT1: {:?}", res.err().unwrap());
-    //             }else{
-    //                 result
-    //             }
-    //         }
-    //         GVFormat::DXT3 => {
-    //             let res = bc2_decoder::decode_bc2(&lz4_decoded_data, width, height, &mut result);
-    //             if res.is_err() {
-    //                 panic!("Error decoding DXT3: {:?}", res.err().unwrap());
-    //             }else{
-    //                 result
-    //             }
-    //         }
-    //         GVFormat::DXT5 => {
-    //             let res = texture2ddecoder::decode_bc3(&lz4_decoded_data, width, height, &mut result);
-    //             if res.is_err() {
-    //                 panic!("Error decoding DXT5: {:?}", res.err().unwrap());
-    //             }else{
-    //                 result
-    //             }
-    //         }
-    //         GVFormat::BC7 => {
-    //             let res = texture2ddecoder::decode_bc7(&lz4_decoded_data, width, height, &mut result);
-    //             if res.is_err() {
-    //                 panic!("Error decoding BC7: {:?}", res.err().unwrap());
-    //             }else{
-    //                 result
-    //             }
-    //         }
-    //     }
-    // }
-
     fn decodeLZ4AndDXT(self: *GVVideo, data: []u8) ![]u32 {
         const width: usize = @intCast(self.header.width);
         const height: usize = @intCast(self.header.height);
