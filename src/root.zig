@@ -13,7 +13,6 @@
 //
 
 const std = @import("std");
-const testing = @import("testing");
 
 const lz4 = @import("lz4");
 const ezdxt = @import("ezdxt");
@@ -44,6 +43,12 @@ pub const RGBAColor = struct {
     g: u8,
     b: u8,
     a: u8,
+};
+
+pub const RGBColor = struct {
+    r: u8,
+    g: u8,
+    b: u8,
 };
 
 pub const GVVideo = struct {
@@ -148,10 +153,26 @@ pub const GVVideo = struct {
     }
 };
 
+// color should be BGRA
 pub fn getRgba(color: u32) RGBAColor {
-    _ = color;
-    // @compileError("Unimplemented");
-    @panic("Unimplemented");
+    return RGBAColor{
+        .r = @as(u8, @truncate((color >> 16) & 0xFF)),
+        .g = @as(u8, @truncate((color >> 8) & 0xFF)),
+        .b = @as(u8, @truncate(color & 0xFF)),
+        .a = @as(u8, @truncate((color >> 24) & 0xFF)),
+        };
+}
+
+pub fn getRgb(color: u32) RGBColor {
+    return RGBColor{
+        .r = @as(u8, @truncate((color >> 16) & 0xFF)),
+        .g = @as(u8, @truncate((color >> 8) & 0xFF)),
+        .b = @as(u8, @truncate(color & 0xFF)),
+        };
+}
+
+pub fn getAlpha(color: u32) u8 {
+    return @as(u8, @truncate((color >> 24) & 0xFF));
 }
 
 pub fn getRgbaFromFrame(frame: []const u32, x: usize, y: usize, width: usize) RGBAColor {
@@ -161,6 +182,38 @@ pub fn getRgbaFromFrame(frame: []const u32, x: usize, y: usize, width: usize) RG
     _ = width;
     // @compileError("Unimplemented");
     @panic("Unimplemented");
+}
+
+test "rgb / rgba basic tests" {
+    const testing = std.testing;
+
+    // rgba: 189, 190, 189, 255
+    const color = 0xFFBDBEBD;
+    const rgba = getRgba(color);
+    const rgb = getRgb(color);
+    const alpha = getAlpha(color);
+    try testing.expectEqual(189, rgba.r);
+    try testing.expectEqual(190, rgba.g);
+    try testing.expectEqual(189, rgba.b);
+    try testing.expectEqual(255, rgba.a);
+    try testing.expectEqual(189, rgb.r);
+    try testing.expectEqual(190, rgb.g);
+    try testing.expectEqual(189, rgb.b);
+    try testing.expectEqual(255, alpha);
+
+    // rgba: 192, 190, 0, 255
+    const color2 = 0xFFC0BE00;
+    const rgba2 = getRgba(color2);
+    const rgb2 = getRgb(color2);
+    const alpha2 = getAlpha(color2);
+    try testing.expectEqual(192, rgba2.r);
+    try testing.expectEqual(190, rgba2.g);
+    try testing.expectEqual(0, rgba2.b);
+    try testing.expectEqual(255, rgba2.a);
+    try testing.expectEqual(192, rgb2.r);
+    try testing.expectEqual(190, rgb2.g);
+    try testing.expectEqual(0, rgb2.b);
+    try testing.expectEqual(255, alpha2);
 }
 
 test "basic GVVideo functionality" {
