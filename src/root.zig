@@ -67,7 +67,7 @@ pub const GVVideo = struct {
         const width: usize = @intCast(self.header.width);
         const height: usize = @intCast(self.header.height);
         const uncompressed_size: usize = (width * height * 4);
-        const lz4_decoded_data = try lz4.decompress(data, uncompressed_size);
+        const lz4_decoded_data: []const u8 = try lz4.Standard.decompress(self.allocator, data, uncompressed_size);
         return lz4_decoded_data;
     }
 
@@ -146,32 +146,33 @@ pub const GVVideo = struct {
     }
 
     fn decodeLZ4AndDXT(self: *GVVideo, data: []u8) ![]const u32 {
-        const width: usize = @intCast(self.header.width);
-        const height: usize = @intCast(self.header.height);
+        const width: u16 = @intCast(self.header.width);
+        const height: u16 = @intCast(self.header.height);
         const format = self.header.format;
         const uncompressed_size_u8 = (width * height * 4);
         // const uncompressed_size_u32 = (width * height);
-        const lz4_decoded_data: []u8 = lz4.block.decompress(data, uncompressed_size_u8).?;
-        var result = std.ArrayList(u32).init(self.allocator);
+        const lz4_decoded_data: []const u8 = try lz4.Standard.decompress(self.allocator, data, uncompressed_size_u8);
+        // var result = std.ArrayList(u32).init(self.allocator);
+
+        const size: usize = width * height;
+        // const result: []ezdxt.Rgba = try self.allocator.alloc(ezdxt.Rgba, size);
+        const result: []u32 = try self.allocator.alloc(u32, size);
 
         switch (format) {
             .DXT1 => {
-                const res = ezdxt.dxt1.decodeImage(lz4_decoded_data, width, height, &result);
-                if (res == .err) {
-                    return error.InvalidFormat;
-                }
+                ezdxt.dxt1.decodeImageBgra(lz4_decoded_data, width, height, result);
+                // return @as([]const u32, result);
+                return result;
             },
             .DXT3 => {
-                const res = ezdxt.dxt3.decodeImage(lz4_decoded_data, width, height, &result);
-                if (res == .err) {
-                    return error.InvalidFormat;
-                }
+                ezdxt.dxt3.decodeImageBgra(lz4_decoded_data, width, height, result);
+                // return @as([]const u32, result);
+                return result;
             },
             .DXT5 => {
-                const res = ezdxt.dxt5.decodeImage(lz4_decoded_data, width, height, &result);
-                if (res == .err) {
-                    return error.InvalidFormat;
-                }
+                ezdxt.dxt5.decodeImageBgra(lz4_decoded_data, width, height, result);
+                // return @as([]const u32, result);
+                return result;
             },
             .BC7 => {
                 // currently bc7 is not supported
