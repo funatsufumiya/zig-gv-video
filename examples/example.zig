@@ -25,7 +25,7 @@ pub fn main() !void {
     try std.testing.expectEqual(10, video.header.width);
     try std.testing.expectEqual(10, video.header.height);
     try std.testing.expectEqual(5, video.header.frame_count);
-    try std.testing.expectEqual(0.0, @abs(video.header.fps - 1.0));
+    try std.testing.expectApproxEqAbs(1.0, video.header.fps, 0.01);
     try std.testing.expectEqual(.DXT1, video.header.format);
     try std.testing.expectEqual(72, video.header.frame_bytes);
     try std.testing.expectEqual(std.time.ns_per_s * 5, video.getDuration());

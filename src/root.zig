@@ -121,9 +121,9 @@ pub const GVVideo = struct {
     }
 
     pub fn getDuration(self: *const GVVideo) u64 {
-        _ = self;
-        // @compileError("Unimplemented");
-        @panic("Unimplemented");
+        // Calculate duration in nanoseconds (frame_count / fps * 1_000_000_000)
+        const seconds = @as(f64, @floatFromInt(self.header.frame_count)) / @as(f64, @floatCast(self.header.fps));
+        return @intFromFloat(seconds * 1_000_000_000);
     }
 
     pub fn deinit(self: *GVVideo, allocator: std.mem.Allocator) void {
