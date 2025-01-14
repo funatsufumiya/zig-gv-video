@@ -1,6 +1,8 @@
 const std = @import("std");
 const testing = @import("testing");
 
+const lz4 = @import("lz4");
+
 pub const GVFormat = enum(u32) {
     DXT1 = 1,
     DXT3 = 3,
