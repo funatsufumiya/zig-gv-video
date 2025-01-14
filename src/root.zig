@@ -200,7 +200,7 @@ pub const GVVideo = struct {
     }
 };
 
-// color should be BGRA
+/// color should be BGRA
 pub fn getRgba(color: u32) RGBAColor {
     return RGBAColor{
         .r = @as(u8, @truncate((color >> 16) & 0xFF)),
@@ -210,6 +210,7 @@ pub fn getRgba(color: u32) RGBAColor {
         };
 }
 
+/// color should be BGRA
 pub fn getRgb(color: u32) RGBColor {
     return RGBColor{
         .r = @as(u8, @truncate((color >> 16) & 0xFF)),
@@ -218,6 +219,7 @@ pub fn getRgb(color: u32) RGBColor {
         };
 }
 
+/// color should be BGRA
 pub fn getAlpha(color: u32) u8 {
     return @as(u8, @truncate((color >> 24) & 0xFF));
 }
