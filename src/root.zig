@@ -34,6 +34,11 @@ pub const GVVideo = struct {
     address_size_blocks: []GVAddressSizeBlock,
     stream: *std.io.StreamSource,
 
+    fn readFloat(reader: anytype) !f32 {
+        const bytes = try reader.readBytesNoEof(4);
+        return @as(f32, @bitCast(bytes));
+    }
+
     pub fn load(allocator: std.mem.Allocator, stream: *std.io.StreamSource) !GVVideo {
         const reader = stream.reader();
 
@@ -42,7 +47,8 @@ pub const GVVideo = struct {
         const width = try reader.readInt(u32, endian);
         const height = try reader.readInt(u32, endian);
         const frame_count = try reader.readInt(u32, endian);
-        const fps = @as(f32, @floatFromInt(try reader.readInt(u32, endian)));
+        // const fps = @as(f32, @floatFromInt(try reader.readInt(u32, endian)));
+        const fps = try readFloat(reader);
         const format_raw = try reader.readInt(u32, endian);
         const frame_bytes = try reader.readInt(u32, endian);
 
