@@ -1,0 +1,3 @@
+[submodule "ezdxt"]
+	path = ezdxt
+	url = https://github.com/funatsufumiya/ezdxt
