@@ -70,8 +70,8 @@ pub const GVVideo = struct {
     fn decodeLZ4(self: *GVVideo, data: []const u8) ![]u8 {
         const width: usize = @intCast(self.header.width);
         const height: usize = @intCast(self.header.height);
-        const uncompressed_size: usize = (width * height * 4);
-        const lz4_decoded_data: []const u8 = try lz4.Standard.decompress(self.allocator, data, uncompressed_size);
+        const uncompressed_size_u8: usize = @as(usize, width) * @as(usize, height) * 4;
+        const lz4_decoded_data: []const u8 = try lz4.Standard.decompress(self.allocator, data, uncompressed_size_u8);
         return lz4_decoded_data;
     }
 
@@ -153,7 +153,7 @@ pub const GVVideo = struct {
         const width: u16 = @intCast(self.header.width);
         const height: u16 = @intCast(self.header.height);
         const format = self.header.format;
-        const uncompressed_size_u8 = (width * height * 4);
+        const uncompressed_size_u8: usize = @as(usize, width) * @as(usize, height) * 4;
         // const uncompressed_size_u32 = (width * height);
         const lz4_decoded_data: []const u8 = try lz4.Standard.decompress(self.allocator, data, uncompressed_size_u8);
 
@@ -223,6 +223,8 @@ pub const GVVideo = struct {
         const size = block.size;
 
         const data = try self.allocator.alloc(u8, size);
+        defer self.allocator.free(data);
+
         try self.stream.seekTo(address);
         if (try self.stream.getPos() != address) {
             return error.ErrorSeekingFrameData;
@@ -249,6 +251,8 @@ pub const GVVideo = struct {
         const address = block.address;
         const size = block.size;
         const data = try self.allocator.alloc(u8, size);
+        defer self.allocator.free(data);
+
         try self.stream.seekTo(address);
         if (try self.stream.getPos() != address) {
             return error.ErrorSeekingFrameData;
@@ -397,6 +401,32 @@ test "header read" {
     try testing.expectEqual(@as(f32, 1.0), header.header.fps);
     try testing.expectEqual(GVFormat.DXT1, header.header.format);
     try testing.expectEqual(@as(u32, 4), header.header.frame_bytes);
+}
+
+test "read rgba" {
+    const testing = std.testing;
+
+    var video = try GVVideo.loadFromFile(testing.allocator, "test_asset/test.gv");
+    defer video.deinit(testing.allocator);
+
+    // header assertions
+    try testing.expectEqual(@as(u32, 640), video.getWidth());
+    try testing.expectEqual(@as(u32, 360), video.getHeight());
+    try testing.expectEqual(@as(u32, 1), video.getFrameCount());
+    try testing.expectApproxEqAbs(30.0, video.getFps(), 0.001);
+
+    const frame = try video.readFrame(0);
+    defer testing.allocator.free(frame);
+
+    // Test specific pixel colors
+    try testing.expectEqual(RGBAColor{ .r = 189, .g = 190, .b = 189, .a = 255 }, getRgba(frame[0]));
+    try testing.expectEqual(RGBAColor{ .r = 192, .g = 190, .b = 0, .a = 255 }, getRgba(frame[130]));
+    try testing.expectEqual(RGBAColor{ .r = 0, .g = 188, .b = 0, .a = 255 }, getRgba(frame[320]));
+    try testing.expectEqual(RGBAColor{ .r = 0, .g = 0, .b = 192, .a = 255 }, getRgba(frame[595]));
+
+    // Test specific coordinates
+    try testing.expectEqual(RGBAColor{ .r = 255, .g = 255, .b = 255, .a = 255 }, getRgba(frame[160 + 300 * 640]));
+    try testing.expectEqual(RGBAColor{ .r = 62, .g = 0, .b = 118, .a = 255 }, getRgba(frame[300 + 300 * 640]));
 }
 
 test "duration calculation" {

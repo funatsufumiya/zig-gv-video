@@ -91,7 +91,8 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-
+    lib_unit_tests.linkLibrary(lz4_dependency.artifact("lz4"));
+    lib_unit_tests.root_module.addImport("lz4", ziglz4_module);
     const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
 
     // Similar to creating the run step earlier, this exposes a `test` step to
