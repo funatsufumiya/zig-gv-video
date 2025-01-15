@@ -15,11 +15,18 @@
 const std = @import("std");
 
 const lz4 = @import("lz4");
+
 // const ezdxt = @import("ezdxt");
-const bc1_decoder = @import("bc1_decoder.zig");
-const bc2_decoder = @import("bc2_decoder.zig");
-const bc3_decoder = @import("bc3_decoder.zig");
-const bc7_decoder = @import("bc7_decoder.zig");
+// const bc1_decoder = @import("bc1_decoder.zig");
+// const bc2_decoder = @import("bc2_decoder.zig");
+// const bc3_decoder = @import("bc3_decoder.zig");
+// const bc7_decoder = @import("bc7_decoder.zig");
+
+const c = @cImport({
+    @cInclude("bcn.h");
+});
+
+const bcn = c;
 
 const assert = std.debug.assert;
 
@@ -256,19 +263,39 @@ pub const GVVideo = struct {
 
         switch (format) {
             .DXT1 => {
-                bc1_decoder.decodeBc1Block(lz4_decoded_data, result);
+                // bc1_decoder.decodeBc1Block(lz4_decoded_data, result);
+                // bcn.decode_bc1(data: [*c]const u8, w: c_long, h: c_long, image: [*c]u32)
+                const flag = bcn.decode_bc1(lz4_decoded_data.ptr, @intCast(width), @intCast(height), result.ptr);
+                if (flag != 1) {
+                    return error.DecodeError;
+                }
                 return result;
             },
             .DXT3 => {
-                bc2_decoder.decodeBc2Block(lz4_decoded_data, result);
-                return result;
+                // bc2_decoder.decodeBc2Block(lz4_decoded_data, result);
+
+                // const flag = bcn.decode_bc2(lz4_decoded_data.ptr, @intCast(width), @intCast(height), result.ptr);
+                // if (flag != 1) {
+                //     return error.DecodeError;
+                // }
+                // return result;
+
+                @panic("not implemented");
             },
             .DXT5 => {
-                bc3_decoder.decodeBc3Block(lz4_decoded_data, result);
+                // bc3_decoder.decodeBc3Block(lz4_decoded_data, result);
+                const flag = bcn.decode_bc3(lz4_decoded_data.ptr, @intCast(width), @intCast(height), result.ptr);
+                if (flag != 1) {
+                    return error.DecodeError;
+                }
                 return result;
             },
             .BC7 => {
-                bc7_decoder.decodeBc7Block(lz4_decoded_data, result);
+                // bc7_decoder.decodeBc7Block(lz4_decoded_data, result);
+                const flag = bcn.decode_bc7(lz4_decoded_data.ptr, @intCast(width), @intCast(height), result.ptr);
+                if (flag != 1) {
+                    return error.DecodeError;
+                }
                 return result;
             }
         }
@@ -285,19 +312,38 @@ pub const GVVideo = struct {
         const result: []u32 = try self.allocator.alloc(u32, uncompressed_size_u32);
         switch (format) {
             .DXT1 => {
-                bc1_decoder.decodeBc1Block(lz4_decoded, result);
+                // bc1_decoder.decodeBc1Block(lz4_decoded, result);
+                const flag = bcn.decode_bc1(lz4_decoded.ptr, @intCast(width), @intCast(height), result.ptr);
+                if (flag != 1) {
+                    return error.DecodeError;
+                }
                 return result;
             },
             .DXT3 => {
-                bc2_decoder.decodeBc2Block(lz4_decoded, result);
-                return result;
+                // bc2_decoder.decodeBc2Block(lz4_decoded, result);
+
+                // const flag = bcn.decode_bc2(lz4_decoded.ptr, @intCast(width), @intCast(height), result.ptr);
+                // if (flag != 1) {
+                //     return error.DecodeError;
+                // }
+                // return result;
+
+                @panic("not implemented");
             },
             .DXT5 => {
-                bc3_decoder.decodeBc3Block(lz4_decoded, result);
+                // bc3_decoder.decodeBc3Block(lz4_decoded, result);
+                const flag = bcn.decode_bc3(lz4_decoded.ptr, @intCast(width), @intCast(height), result.ptr);
+                if (flag != 1) {
+                    return error.DecodeError;
+                }
                 return result;
             },
             .BC7 => {
-                bc7_decoder.decodeBc7Block(lz4_decoded, result);
+                // bc7_decoder.decodeBc7Block(lz4_decoded, result);
+                const flag = bcn.decode_bc7(lz4_decoded.ptr, @intCast(width), @intCast(height), result.ptr);
+                if (flag != 1) {
+                    return error.DecodeError;
+                }
                 return result;
             },
         }

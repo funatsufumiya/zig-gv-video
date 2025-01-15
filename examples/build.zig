@@ -19,6 +19,12 @@ pub fn build(b: *std.Build) void {
             .{ .name = "lz4", .module = ziglz4_module },
         },
     });
+    gvvideo_module.addIncludePath(b.path("../texture2ddecoder"));
+    gvvideo_module.addCSourceFiles(.{
+        .files = &.{
+            "../texture2ddecoder/bcn.cpp",
+        },
+    });
 
     const lib = b.addExecutable(.{
         .name = "gvvideo-example",
@@ -26,6 +32,8 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    lib.linkSystemLibrary("c++");
+    lib.linkLibCpp();
     lib.linkLibrary(lz4_dependency.artifact("lz4"));
     lib.root_module.addImport("gvvideo", gvvideo_module);
     b.installArtifact(lib);
