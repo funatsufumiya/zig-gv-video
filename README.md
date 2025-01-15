@@ -1,6 +1,6 @@
 ## zig-gv-video
 
-***WORK IN PROGRESS, NOT READY FOR USE***
+***NOTE*** Currently disabled DXT (BC) decoder options. see [build.zig](build.zig)
 
 Ported from [rust-gv-video](https://github.com/funatsufumiya/rust-gv-video)
 

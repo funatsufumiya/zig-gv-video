@@ -14,17 +14,15 @@
 
 const std = @import("std");
 
+const config = @import("config");
+
 const lz4 = @import("lz4");
 
-// const ezdxt = @import("ezdxt");
-// const bc1_decoder = @import("bc1_decoder.zig");
-// const bc2_decoder = @import("bc2_decoder.zig");
-// const bc3_decoder = @import("bc3_decoder.zig");
-// const bc7_decoder = @import("bc7_decoder.zig");
-
-const c = @cImport({
+const c = if (config.enable_uncompressed) @cImport({
     @cInclude("bcn.h");
-});
+}) else {};
+
+pub const uncompressed_functions_enabled = config.enable_uncompressed;
 
 const bcn = c;
 
@@ -251,6 +249,10 @@ pub const GVVideo = struct {
     }
 
     fn decodeLZ4AndDXT(self: *GVVideo, data: []const u8) ![]const u32 {
+        if (!config.enable_uncompressed) {
+            @panic("DXT (BC) decoding is disabled by build configuration");
+        }
+
         const width: u16 = @intCast(self.header.width);
         const height: u16 = @intCast(self.header.height);
         const format = self.header.format;
@@ -303,6 +305,10 @@ pub const GVVideo = struct {
 
     /// only for testing
     fn _decodeDXT(self: *GVVideo, data: []const u8) ![]const u32 {
+        if (!config.enable_uncompressed) {
+            @panic("DXT (BC) decoding is disabled by build configuration");
+        }
+
         const width: u16 = @intCast(self.header.width);
         const height: u16 = @intCast(self.header.height);
         const format = self.header.format;
@@ -392,16 +398,24 @@ pub const GVVideo = struct {
 
     // decompress lz4 block and decode dxt, then return decompressed frame data (BGRA u32)
     pub fn readFrame(self: *GVVideo, frame_id: u32) ![]const u32 {
-        const data = try self.readFrameRawAlloc(frame_id);
-        defer self.allocator.free(data);
+        if (config.enable_uncompressed) {
+            const data = try self.readFrameRawAlloc(frame_id);
+            defer self.allocator.free(data);
 
-        return self.decodeLZ4AndDXT(data);
+            return self.decodeLZ4AndDXT(data);
+        }else{
+            @panic("readFrame is disabled by build option");
+        }
     }
 
     /// decompress lz4 block and decode dxt, then return decompressed frame data (BGRA u32), at specified time
     pub fn readFrameAt(self: *GVVideo, duration: u64) ![]const u32 {
-        const frame_id: u32 = @as(u32, @intFromFloat(self.header.fps * @as(f32, @floatFromInt(duration / 1_000_000_000))));
-        return self.readFrame(frame_id);
+        if (config.enable_uncompressed) {
+            const frame_id: u32 = @as(u32, @intFromFloat(self.header.fps * @as(f32, @floatFromInt(duration / 1_000_000_000))));
+            return self.readFrame(frame_id);
+        }else{
+            @panic("readFrame is disabled by build option");
+        }
     }
 
     // // reader.readAllAlloc always causes error, so this is workaround
@@ -644,6 +658,10 @@ test "header read of test.gv" {
 test "read rgba" {
     // return error.SkipZigTest;
 
+    if (!config.enable_uncompressed) {
+        return error.SkipZigTest;
+    }
+
     const testing = std.testing;
 
     var file = try std.fs.cwd().openFile("test_asset/test.gv", .{});
@@ -699,6 +717,10 @@ test "read raw" {
 
 test "read compressed and _decodeDXT" {
     // return error.SkipZigTest;
+
+    if (!config.enable_uncompressed) {
+        return error.SkipZigTest;
+    }
 
     const testing = std.testing;
     var file = try std.fs.cwd().openFile("test_asset/test.gv", .{});

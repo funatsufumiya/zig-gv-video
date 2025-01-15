@@ -30,29 +30,35 @@ pub fn main() !void {
     std.debug.print("video.header: {}\n", .{video.header});
     std.debug.print("video.getDuration(): {}\n", .{video.getDuration()});
 
-    var frame = try video.readFrameAt(std.time.ns_per_s * 3.5);
-    try std.testing.expectEqual(w * h, frame.len);
+    if (gvvideo.uncompressed_functions_enabled){
 
-    std.debug.print("frame[0]: 0x{x}\n", .{frame[0]});
-    std.debug.print("frame[6]: 0x{x}\n", .{frame[6]});
-    std.debug.print("frame[6 + w*6]: 0x{x}\n", .{frame[6 + w*6]});
-    std.debug.print("frame[0 + w*6]: 0x{x}\n", .{frame[0 + w*6]});
-    
-    try std.testing.expectEqual(0xFFFF0000, frame[0]); // x,y=0,0: red (0xAARRGGBB)
-    try std.testing.expectEqual(0xFF0000FF, frame[6]); // x,y=6,0: blue (0xAARRGGBB)
-    try std.testing.expectEqual(0xFF00FF00, frame[0 + w*6]); // x,y=0,6: green (0xAARRGGBB)
-    try std.testing.expectEqual(0xFFE7FF00, frame[6 + w*6]); // x,y=6,6: yellow (0xAARRGGBB)
+        var frame = try video.readFrameAt(std.time.ns_per_s * 3.5);
+        try std.testing.expectEqual(w * h, frame.len);
 
-    // 4.99 sec
-    frame = try video.readFrameAt(std.time.ns_per_s * 4.99);
-    try std.testing.expectEqual(w * h, frame.len);
+        std.debug.print("frame[0]: 0x{x}\n", .{frame[0]});
+        std.debug.print("frame[6]: 0x{x}\n", .{frame[6]});
+        std.debug.print("frame[6 + w*6]: 0x{x}\n", .{frame[6 + w*6]});
+        std.debug.print("frame[0 + w*6]: 0x{x}\n", .{frame[0 + w*6]});
+        
+        try std.testing.expectEqual(0xFFFF0000, frame[0]); // x,y=0,0: red (0xAARRGGBB)
+        try std.testing.expectEqual(0xFF0000FF, frame[6]); // x,y=6,0: blue (0xAARRGGBB)
+        try std.testing.expectEqual(0xFF00FF00, frame[0 + w*6]); // x,y=0,6: green (0xAARRGGBB)
+        try std.testing.expectEqual(0xFFE7FF00, frame[6 + w*6]); // x,y=6,6: yellow (0xAARRGGBB)
 
-    // 5.01 sec is out of range
-    if (video.readFrameAt(std.time.ns_per_s * 5.01)) |_| {
-        return error.TestUnexpectedResult;
-    } else |err| {
-        try std.testing.expectEqual(error.EndOfVideo, err);
+        // 4.99 sec
+        frame = try video.readFrameAt(std.time.ns_per_s * 4.99);
+        try std.testing.expectEqual(w * h, frame.len);
+
+        // 5.01 sec is out of range
+        if (video.readFrameAt(std.time.ns_per_s * 5.01)) |_| {
+            return error.TestUnexpectedResult;
+        } else |err| {
+            try std.testing.expectEqual(error.EndOfVideo, err);
+        }
+
+        std.debug.print("All tests passed\n", .{});
+
+    }else{
+        std.debug.print("Skipped readFrameAt() test, because config.enable_uncompressed is false\n", .{});
     }
-
-    std.debug.print("All tests passed\n", .{});
 }

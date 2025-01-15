@@ -4,6 +4,10 @@ const std = @import("std");
 // declaratively construct a build graph that will be executed by an external
 // runner.
 pub fn build(b: *std.Build) void {
+    const enable_uncompressed = b.option(bool, "enable-uncompressed", "enable uncompressed functions (using DXT/BC decoder)") orelse false;
+    const options = b.addOptions();
+    options.addOption(bool, "enable_uncompressed", enable_uncompressed);
+
     // Standard target options allows the person running `zig build` to choose
     // what target to build for. Here we do not override the defaults, which
     // means any target is allowed, and the default is native. Other options
@@ -32,17 +36,20 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    lib.root_module.addIncludePath(b.path("texture2ddecoder"));
-    lib.addIncludePath(b.path("texture2ddecoder"));
-    lib.root_module.addCSourceFiles(.{
-        .files = &.{
-            "texture2ddecoder/bcn.cpp",
-        },
-    });
-    lib.linkSystemLibrary("c++");
+    if(enable_uncompressed){
+        lib.root_module.addIncludePath(b.path("texture2ddecoder"));
+        lib.addIncludePath(b.path("texture2ddecoder"));
+        lib.root_module.addCSourceFiles(.{
+            .files = &.{
+                "texture2ddecoder/bcn.cpp",
+            },
+        });
+        lib.linkSystemLibrary("c++");
+        lib.linkLibCpp();
+    }
     lib.linkLibrary(lz4_dependency.artifact("lz4"));
-    lib.linkLibCpp();
     lib.root_module.addImport("lz4", ziglz4_module);
+    lib.root_module.addOptions("config", options);
 
     // This declares intent for the library to be installed into the standard
     // location when the user invokes the "install" step (the default step when
@@ -56,17 +63,20 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    lib_unit_tests.root_module.addIncludePath(b.path("texture2ddecoder"));
-    lib_unit_tests.addIncludePath(b.path("texture2ddecoder"));
-    lib_unit_tests.addCSourceFiles(.{
-        .files = &.{
-            "texture2ddecoder/bcn.cpp",
-        },
-    });
-    lib_unit_tests.linkSystemLibrary("c++");
-    lib_unit_tests.linkLibCpp();
+    if(enable_uncompressed){
+        lib_unit_tests.root_module.addIncludePath(b.path("texture2ddecoder"));
+        lib_unit_tests.addIncludePath(b.path("texture2ddecoder"));
+        lib_unit_tests.addCSourceFiles(.{
+            .files = &.{
+                "texture2ddecoder/bcn.cpp",
+            },
+        });
+        lib_unit_tests.linkSystemLibrary("c++");
+        lib_unit_tests.linkLibCpp();
+    }
     lib_unit_tests.linkLibrary(lz4_dependency.artifact("lz4"));
     lib_unit_tests.root_module.addImport("lz4", ziglz4_module);
+    lib_unit_tests.root_module.addOptions("config", options);
     const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
 
     // Similar to creating the run step earlier, this exposes a `test` step to
