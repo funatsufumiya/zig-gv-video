@@ -88,11 +88,20 @@ pub const GVVideo = struct {
         unreachable;
     }
 
+    fn read(self: *GVVideo, buffer: []u8) !usize {
+        if (self.stream_reader) |reader| {
+            return try reader.read(buffer);
+        } else if (self.file) |file| {
+            return try file.read(buffer);
+        }
+        unreachable;
+    }
+
     fn readAll(self: *GVVideo, buffer: []u8) !usize {
         if (self.stream_reader) |reader| {
             return try reader.readAll(buffer);
-        } else if (self.file_reader) |reader| {
-            return try reader.readAll(buffer);
+        } else if (self.file) |file| {
+            return try file.readAll(buffer);
         }
         unreachable;
     }
@@ -239,7 +248,6 @@ pub const GVVideo = struct {
         const height: u16 = @intCast(self.header.height);
         const format = self.header.format;
         const uncompressed_size_u8: usize = @as(usize, width) * @as(usize, height) * 4;
-        // const uncompressed_size_u32 = (width * height);
         const lz4_decoded_data: []const u8 = try lz4.Standard.decompress(self.allocator, data, uncompressed_size_u8);
 
         const size: usize = width * height;
@@ -310,8 +318,8 @@ pub const GVVideo = struct {
         const address = block.address;
         const size = block.size;
 
-        std.debug.print("address: {}\n", .{address});
-        std.debug.print("size: {}\n", .{size});
+        // std.debug.print("address: {}\n", .{address});
+        // std.debug.print("size: {}\n", .{size});
 
         const data: []u8 = try self.allocator.alloc(u8, size);
         assert(data.len == size);
@@ -321,13 +329,15 @@ pub const GVVideo = struct {
             return error.ErrorSeekingFrameData;
         }
 
-        const end = try self.getEndPos();
-        std.debug.print("end: {}\n", .{end});
-        std.debug.print("end - address: {}\n", .{end - address});
+        // const end = try self.getEndPos();
+        // std.debug.print("end: {}\n", .{end});
+        // std.debug.print("end - address: {}\n", .{end - address});
 
-        if (try self.readAll(data) != size) {
+        if (try self.read(data) != size) {
             return error.ErrorReadingFrameData;
         }
+
+        // std.debug.print("data.len: {}\n", .{data.len});
 
         return data;
     }
@@ -613,21 +623,21 @@ test "read rgba" {
 }
 
 test "read raw" {
-    return error.SkipZigTest;
+    // return error.SkipZigTest;
 
-    // const testing = std.testing;
-    // var file = try std.fs.cwd().openFile("test_asset/test.gv", .{});
-    // defer file.close();
+    const testing = std.testing;
+    var file = try std.fs.cwd().openFile("test_asset/test.gv", .{});
+    defer file.close();
 
-    // var video = try GVVideo.loadFile(testing.allocator, &file);
-    // defer video.deinit();
+    var video = try GVVideo.loadFile(testing.allocator, &file);
+    defer video.deinit();
 
-    // try testing.expectEqual(1, video.address_size_blocks.len);
-    // try testing.expectEqual(@as(u64, 24), video.address_size_blocks[0].address);
-    // try testing.expectEqual(@as(u64, 1507), video.address_size_blocks[0].size);
+    try testing.expectEqual(1, video.address_size_blocks.len);
+    try testing.expectEqual(@as(u64, 24), video.address_size_blocks[0].address);
+    try testing.expectEqual(@as(u64, 1507), video.address_size_blocks[0].size);
 
-    // const frame = try video._readFrameRawAlloc(0);
-    // defer testing.allocator.free(frame);
+    const frame = try video._readFrameRawAlloc(0);
+    defer testing.allocator.free(frame);
 }
 
 // test "read compressed and _decodeDXT" {

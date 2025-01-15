@@ -35,8 +35,6 @@ pub fn main() !void {
     try std.testing.expectEqual(0xFF00FF00, frame[0 + w*6]); // x,y=0,6: green (0xAARRGGBB)
     try std.testing.expectEqual(0xFFE7FF00, frame[6 + w*6]); // x,y=6,6: yellow (0xAARRGGBB)
 
-
-
     // 4.99 sec
     frame = try video.readFrameAt(std.time.ns_per_s * 4.99);
     try std.testing.expectEqual(w * h, frame.len);
