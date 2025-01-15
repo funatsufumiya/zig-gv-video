@@ -596,31 +596,34 @@ test "header read of test.gv" {
 }
 
 test "read rgba" {
-    return error.SkipZigTest;
+    // return error.SkipZigTest;
 
-    // const testing = std.testing;
+    const testing = std.testing;
 
-    // var video = try GVVideo.loadFromFile(testing.allocator, "test_asset/test.gv");
-    // defer video.deinit();
+    var file = try std.fs.cwd().openFile("test_asset/test.gv", .{});
+    defer file.close();
 
-    // // header assertions
-    // try testing.expectEqual(@as(u32, 640), video.getWidth());
-    // try testing.expectEqual(@as(u32, 360), video.getHeight());
-    // try testing.expectEqual(@as(u32, 1), video.getFrameCount());
-    // try testing.expectApproxEqAbs(30.0, video.getFps(), 0.001);
+    var video = try GVVideo.loadFile(testing.allocator, &file);
+    defer video.deinit();
 
-    // const frame = try video.readFrame(0);
-    // defer testing.allocator.free(frame);
+    // header assertions
+    try testing.expectEqual(@as(u32, 640), video.getWidth());
+    try testing.expectEqual(@as(u32, 360), video.getHeight());
+    try testing.expectEqual(@as(u32, 1), video.getFrameCount());
+    try testing.expectApproxEqAbs(30.0, video.getFps(), 0.001);
 
-    // // Test specific pixel colors
-    // try testing.expectEqual(RGBAColor{ .r = 189, .g = 190, .b = 189, .a = 255 }, getRgba(frame[0]));
-    // try testing.expectEqual(RGBAColor{ .r = 192, .g = 190, .b = 0, .a = 255 }, getRgba(frame[130]));
-    // try testing.expectEqual(RGBAColor{ .r = 0, .g = 188, .b = 0, .a = 255 }, getRgba(frame[320]));
-    // try testing.expectEqual(RGBAColor{ .r = 0, .g = 0, .b = 192, .a = 255 }, getRgba(frame[595]));
+    const frame = try video.readFrame(0);
+    defer testing.allocator.free(frame);
 
-    // // Test specific coordinates
-    // try testing.expectEqual(RGBAColor{ .r = 255, .g = 255, .b = 255, .a = 255 }, getRgba(frame[160 + 300 * 640]));
-    // try testing.expectEqual(RGBAColor{ .r = 62, .g = 0, .b = 118, .a = 255 }, getRgba(frame[300 + 300 * 640]));
+    // Test specific pixel colors
+    try testing.expectEqual(RGBAColor{ .r = 189, .g = 190, .b = 189, .a = 255 }, getRgba(frame[0]));
+    try testing.expectEqual(RGBAColor{ .r = 192, .g = 190, .b = 0, .a = 255 }, getRgba(frame[130]));
+    try testing.expectEqual(RGBAColor{ .r = 0, .g = 188, .b = 0, .a = 255 }, getRgba(frame[320]));
+    try testing.expectEqual(RGBAColor{ .r = 0, .g = 0, .b = 192, .a = 255 }, getRgba(frame[595]));
+
+    // Test specific coordinates
+    try testing.expectEqual(RGBAColor{ .r = 255, .g = 255, .b = 255, .a = 255 }, getRgba(frame[160 + 300 * 640]));
+    try testing.expectEqual(RGBAColor{ .r = 62, .g = 0, .b = 118, .a = 255 }, getRgba(frame[300 + 300 * 640]));
 }
 
 test "read raw" {

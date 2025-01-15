@@ -5,7 +5,7 @@ const std = @import("std");
 inline fn rgb565Le(value: u16) struct { u8, u8, u8 } {
     const r = @as(u8, @intCast((value >> 8 & 0xf8) | (value >> 13)));
     const g = @as(u8, @intCast((value >> 3 & 0xfc) | (value >> 9 & 3)));
-    const b = @as(u8, @intCast(value << 3)) | @as(u8, @intCast(value >> 2 & 7));
+    const b = @as(u8, @intCast(value & 0x1f)) << 3 | @as(u8, @intCast(value >> 2 & 7));
     return .{ r, g, b };
 }
 
