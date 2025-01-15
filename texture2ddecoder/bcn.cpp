@@ -39,6 +39,48 @@ int decode_bc1(const uint8_t* data, const long w, const long h, uint32_t* image)
 	return 1;
 }
 
+int decode_bc2(const uint8_t *data, const long w, const long h, uint32_t* outbuf)
+{
+	uint8_t colour[4][3];
+	uint8_t alpha[16];
+	int i, j;
+
+	for (i = 0; i < 8; i++)
+	{
+		alpha[i * 2 + 0]  = (uint8_t)(((uint32_t)((data[i] >> 0) & 0x0F) * 255) / 15);
+		alpha[i * 2 + 1]  = (uint8_t)(((uint32_t)((data[i] >> 4) & 0x0F) * 255) / 15);
+	}
+
+	colour[0][0] = (uint8_t)((*((uint16_t*)&data[8]) & 0xF800) >> 8);
+	colour[0][1] = (uint8_t)((*((uint16_t*)&data[8]) & 0x07E0) >> 3);
+	colour[0][2] = (uint8_t)((*((uint16_t*)&data[8]) & 0x001F) << 3);
+
+	colour[1][0] = (uint8_t)((*((uint16_t*)&data[10]) & 0xF800) >> 8);
+	colour[1][1] = (uint8_t)((*((uint16_t*)&data[10]) & 0x07E0) >> 3);
+	colour[1][2] = (uint8_t)((*((uint16_t*)&data[10]) & 0x001F) << 3);
+
+	for (i = 0; i < 3; i++)
+	{
+		colour[2][i] = (uint8_t)(colour[0][i] * (2.0/3.0) + colour[1][i] * (1.0 / 3.0));
+		colour[3][i] = (uint8_t)(colour[0][i] * (1.0/3.0) + colour[1][i] * (2.0 / 3.0));
+	}
+
+	for (i = 0; i < 4; i++)
+	{
+		for (j = 0; j < 4; j++)
+		{
+			int index = (outbuf[12 + i] >> (j * 2)) & 0x03;
+
+			outbuf[i * 16 + j * 4 + 0] = (uint32_t)colour[index][0];
+			outbuf[i * 16 + j * 4 + 1] = (uint32_t)colour[index][1];
+			outbuf[i * 16 + j * 4 + 2] = (uint32_t)colour[index][2];
+			outbuf[i * 16 + j * 4 + 3] = (uint32_t)alpha[i * 4 + j];
+		}
+	}
+
+	return 1;
+}
+
 void decode_bc3_alpha(const uint8_t* data, uint32_t* outbuf, int channel) {
 	uint_fast8_t a[8] = { data[0], data[1] };
 	if (a[0] > a[1]) {

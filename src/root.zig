@@ -274,13 +274,13 @@ pub const GVVideo = struct {
             .DXT3 => {
                 // bc2_decoder.decodeBc2Block(lz4_decoded_data, result);
 
-                // const flag = bcn.decode_bc2(lz4_decoded_data.ptr, @intCast(width), @intCast(height), result.ptr);
-                // if (flag != 1) {
-                //     return error.DecodeError;
-                // }
-                // return result;
+                const flag = bcn.decode_bc2(lz4_decoded_data.ptr, @intCast(width), @intCast(height), result.ptr);
+                if (flag != 1) {
+                    return error.DecodeError;
+                }
+                return result;
 
-                @panic("not implemented");
+                // @panic("not implemented");
             },
             .DXT5 => {
                 // bc3_decoder.decodeBc3Block(lz4_decoded_data, result);
@@ -322,13 +322,13 @@ pub const GVVideo = struct {
             .DXT3 => {
                 // bc2_decoder.decodeBc2Block(lz4_decoded, result);
 
-                // const flag = bcn.decode_bc2(lz4_decoded.ptr, @intCast(width), @intCast(height), result.ptr);
-                // if (flag != 1) {
-                //     return error.DecodeError;
-                // }
-                // return result;
+                const flag = bcn.decode_bc2(lz4_decoded.ptr, @intCast(width), @intCast(height), result.ptr);
+                if (flag != 1) {
+                    return error.DecodeError;
+                }
+                return result;
 
-                @panic("not implemented");
+                // @panic("not implemented");
             },
             .DXT5 => {
                 // bc3_decoder.decodeBc3Block(lz4_decoded, result);
