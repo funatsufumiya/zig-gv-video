@@ -9,7 +9,7 @@ pub fn main() !void {
     const allocator = arena.allocator();
 
     // load file
-    const file = try std.fs.cwd().openFile("test_asset/test-10px.gv", .{});
+    var file = try std.fs.cwd().openFile("test_asset/test-10px.gv", .{});
     defer file.close();
 
     // load gvvideo
