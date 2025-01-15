@@ -3,11 +3,12 @@
 const std = @import("std");
 
 inline fn rgb565Le(value: u16) struct { u8, u8, u8 } {
-    const r = @as(u8, @intCast(((value >> 11) * 527 + 23) >> 6));
-    const g = @as(u8, @intCast((((value >> 5) & 0x3F) * 259 + 33) >> 6));
-    const b = @as(u8, @intCast(((value & 0x1F) * 527 + 23) >> 6));
+    const r = @as(u8, @intCast((value >> 8 & 0xf8) | (value >> 13)));
+    const g = @as(u8, @intCast((value >> 3 & 0xfc) | (value >> 9 & 3)));
+    const b = @as(u8, @intCast(value << 3)) | @as(u8, @intCast(value >> 2 & 7));
     return .{ r, g, b };
 }
+
 inline fn color(r: u8, g: u8, b: u8, a: u8) u32 {
     return @as(u32, b) | (@as(u32, g) << 8) | (@as(u32, r) << 16) | (@as(u32, a) << 24);
 }
