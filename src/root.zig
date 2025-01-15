@@ -60,6 +60,7 @@ pub const RGBColor = struct {
 pub const GVVideo = struct {
     header: GVHeader,
     address_size_blocks: []GVAddressSizeBlock,
+    file_or_not: ?std.fs.File,
     stream: *std.io.StreamSource,
     reader: std.io.StreamSource.Reader,
     allocator: std.mem.Allocator,
@@ -136,6 +137,7 @@ pub const GVVideo = struct {
             .address_size_blocks = blocks,
             .stream = stream,
             .reader = reader,
+            .file_or_not = null,
             .allocator = allocator,
         };
     }
@@ -148,7 +150,9 @@ pub const GVVideo = struct {
         var stream = std.io.StreamSource{ .file = file };
         
         // Use the existing load function with a general purpose allocator
-        return GVVideo.load(allocator, &stream);
+        var gv = try GVVideo.load(allocator, &stream);
+        gv.file_or_not = file;
+        return gv;
     }
 
     fn decodeLZ4AndDXT(self: *GVVideo, data: []const u8) ![]const u32 {
@@ -344,6 +348,10 @@ pub const GVVideo = struct {
 
     pub fn deinit(self: *GVVideo, allocator: std.mem.Allocator) void {
         allocator.free(self.address_size_blocks);
+
+        if (self.file_or_not) |file| {
+            file.close();
+        }
     }
 };
 
@@ -569,6 +577,7 @@ test "duration calculation" {
         .address_size_blocks = &[_]GVAddressSizeBlock{},
         .stream = undefined,
         .reader = undefined,
+        .file_or_not = null,
         .allocator = undefined,
     };
     
