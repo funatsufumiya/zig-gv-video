@@ -493,7 +493,3 @@ test "duration calculation" {
     const duration = video.getDuration();
     try testing.expectEqual(@as(u64, 33333333), duration); // ~33.33ms in nanoseconds (1/30 sec)
 }
-
-test "basic GVVideo functionality" {
-    // Add tests here once implementation is complete
-}
