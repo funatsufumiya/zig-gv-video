@@ -227,7 +227,7 @@ pub const GVVideo = struct {
         return gvvideo;
     }
 
-    pub fn loadFile(allocator: std.mem.Allocator, file: std.fs.File) !GVVideo {
+    pub fn loadFile(allocator: std.mem.Allocator, file: *std.fs.File) !GVVideo {
         return try GVVideo.loadStreamOrFile(allocator, null, file);
     }
 
@@ -410,8 +410,8 @@ pub const GVVideo = struct {
         return self.header.frame_bytes;
     }
 
-    pub fn deinit(self: *GVVideo, allocator: std.mem.Allocator) void {
-        allocator.free(self.address_size_blocks);
+    pub fn deinit(self: *GVVideo) void {
+        self.allocator.free(self.address_size_blocks);
     }
 };
 
@@ -549,7 +549,7 @@ test "header read" {
 
     var stream = std.io.StreamSource{ .const_buffer = std.io.fixedBufferStream(&header_data) };
     var header = try GVVideo.loadStream(testing.allocator, &stream);
-    defer header.deinit(testing.allocator);
+    defer header.deinit();
     
     try testing.expectEqual(@as(u32, 2), header.header.width);
     try testing.expectEqual(@as(u32, 2), header.header.height);
@@ -565,8 +565,8 @@ test "header read of test.gv" {
     var file = try std.fs.cwd().openFile("test_asset/test.gv", .{});
     defer file.close();
 
-    var video = try GVVideo.loadFile(testing.allocator, file);
-    defer video.deinit(testing.allocator);
+    var video = try GVVideo.loadFile(testing.allocator, &file);
+    defer video.deinit();
 
     // header assertions
     try testing.expectEqual(@as(u32, 640), video.getWidth());
@@ -587,7 +587,7 @@ test "read rgba" {
     // const testing = std.testing;
 
     // var video = try GVVideo.loadFromFile(testing.allocator, "test_asset/test.gv");
-    // defer video.deinit(testing.allocator);
+    // defer video.deinit();
 
     // // header assertions
     // try testing.expectEqual(@as(u32, 640), video.getWidth());
@@ -616,8 +616,8 @@ test "read raw" {
     var file = try std.fs.cwd().openFile("test_asset/test.gv", .{});
     defer file.close();
 
-    var video = try GVVideo.loadFile(testing.allocator, file);
-    defer video.deinit(testing.allocator);
+    var video = try GVVideo.loadFile(testing.allocator, &file);
+    defer video.deinit();
 
     try testing.expectEqual(1, video.address_size_blocks.len);
     try testing.expectEqual(@as(u64, 24), video.address_size_blocks[0].address);
@@ -632,7 +632,7 @@ test "read raw" {
 
 //     const testing = std.testing;
 //     var video = try GVVideo.loadFromFile(testing.allocator, "test_asset/test.gv");
-//     defer video.deinit(testing.allocator);
+//     defer video.deinit();
 
 //     const frame = try video.readFrameCompressed(0);
 //     defer testing.allocator.free(frame);
@@ -656,8 +656,10 @@ test "duration calculation" {
             .frame_bytes = 115200,
         },
         .address_size_blocks = &[_]GVAddressSizeBlock{},
-        .stream = undefined,
-        .reader = undefined,
+        .stream = null,
+        .stream_reader = null,
+        .file = null,
+        .file_reader = null,
         .allocator = undefined,
     };
     
