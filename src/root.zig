@@ -21,6 +21,8 @@ const bc2_decoder = @import("bc2_decoder.zig");
 const bc3_decoder = @import("bc3_decoder.zig");
 const bc7_decoder = @import("bc7_decoder.zig");
 
+const assert = std.debug.assert;
+
 pub const GVFormat = enum(u32) {
     DXT1 = 1,
     DXT3 = 3,
@@ -185,8 +187,8 @@ pub const GVVideo = struct {
         const width: u16 = @intCast(self.header.width);
         const height: u16 = @intCast(self.header.height);
         const format = self.header.format;
-        const uncompressed_size_u32 = (width * height);
-        const uncompressed_size_u8 = (width * height * 4);
+        const uncompressed_size_u32: usize = @as(usize, width) * @as(usize, height);
+        const uncompressed_size_u8: usize = uncompressed_size_u32 * 4;
         const lz4_decoded = try lz4.Standard.decompress(self.allocator, data, uncompressed_size_u8);
         const result: []u32 = try self.allocator.alloc(u32, uncompressed_size_u32);
         switch (format) {
@@ -222,6 +224,11 @@ pub const GVVideo = struct {
         const address = block.address;
         const size = block.size;
 
+        // WORKAROUND
+        const zero_data = try self.allocator.alloc(u8, 0);
+        defer self.allocator.free(zero_data);
+        _ = try self.reader.readAll(zero_data);
+
         const data = try self.allocator.alloc(u8, size);
         defer self.allocator.free(data);
 
@@ -248,6 +255,9 @@ pub const GVVideo = struct {
         }
 
         const block = self.address_size_blocks[frame_id];
+        // std.debug.print("frame_id: {}\n", .{frame_id});
+        // std.debug.print("block.address: {}\n", .{block.address});
+        // std.debug.print("block.size: {}\n", .{block.size});
         const address = block.address;
         const size = block.size;
         const data = try self.allocator.alloc(u8, size);
@@ -257,7 +267,16 @@ pub const GVVideo = struct {
         if (try self.stream.getPos() != address) {
             return error.ErrorSeekingFrameData;
         }
-        if (try self.reader.readAll(data) != size) {
+
+        // WORKAROUND
+        const zero_data = try self.allocator.alloc(u8, 0);
+        defer self.allocator.free(zero_data);
+        _ = try self.reader.readAll(zero_data);
+
+        const data_size = try self.reader.readAll(data);
+        std.debug.print("data_size: {}\n", .{data_size});
+        if (data_size != size) {
+        // if (try self.reader.readAll(data) != size) {
             return error.ErrorReadingFrameData;
         }
         return self.decodeLZ4(data);
@@ -403,7 +422,7 @@ test "header read" {
     try testing.expectEqual(@as(u32, 4), header.header.frame_bytes);
 }
 
-test "header read 2" {
+test "header read of test.gv" {
     const testing = std.testing;
 
     var video = try GVVideo.loadFromFile(testing.allocator, "test_asset/test.gv");
@@ -414,6 +433,12 @@ test "header read 2" {
     try testing.expectEqual(@as(u32, 360), video.getHeight());
     try testing.expectEqual(@as(u32, 1), video.getFrameCount());
     try testing.expectApproxEqAbs(30.0, video.getFps(), 0.001);
+    try testing.expectEqual(@as(u32, 115200), video.getFrameBytes());
+
+    // address size blocks
+    try testing.expectEqual(1, video.address_size_blocks.len);
+    try testing.expectEqual(@as(u64, 24), video.address_size_blocks[0].address);
+    try testing.expectEqual(@as(u64, 1507), video.address_size_blocks[0].size);
 }
 
 test "read rgba" {
