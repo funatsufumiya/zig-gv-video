@@ -156,10 +156,8 @@ pub const GVVideo = struct {
         const uncompressed_size_u8 = (width * height * 4);
         // const uncompressed_size_u32 = (width * height);
         const lz4_decoded_data: []const u8 = try lz4.Standard.decompress(self.allocator, data, uncompressed_size_u8);
-        // var result = std.ArrayList(u32).init(self.allocator);
 
         const size: usize = width * height;
-        // const result: []ezdxt.Rgba = try self.allocator.alloc(ezdxt.Rgba, size);
         const result: []u32 = try self.allocator.alloc(u32, size);
 
         switch (format) {
@@ -179,6 +177,35 @@ pub const GVVideo = struct {
                 bc7_decoder.decodeBc7Block(lz4_decoded_data, result);
                 return result;
             }
+        }
+    }
+
+    /// only for testing
+    fn _decodeDXT(self: *GVVideo, data: []u8) ![]const u32 {
+        const width: u16 = @intCast(self.header.width);
+        const height: u16 = @intCast(self.header.height);
+        const format = self.header.format;
+        const uncompressed_size_u32 = (width * height);
+        const uncompressed_size_u8 = (width * height * 4);
+        const lz4_decoded = try lz4.Standard.decompress(self.allocator, data, uncompressed_size_u8);
+        const result: []u32 = try self.allocator.alloc(u32, uncompressed_size_u32);
+        switch (format) {
+            .DXT1 => {
+                bc1_decoder.decodeBc1Block(lz4_decoded, result);
+                return result;
+            },
+            .DXT3 => {
+                bc2_decoder.decodeBc2Block(lz4_decoded, result);
+                return result;
+            },
+            .DXT5 => {
+                bc3_decoder.decodeBc3Block(lz4_decoded, result);
+                return result;
+            },
+            .BC7 => {
+                bc7_decoder.decodeBc7Block(lz4_decoded, result);
+                return result;
+            },
         }
     }
 
@@ -340,6 +367,58 @@ test "rgb / rgba basic tests" {
     try testing.expectEqual(190, rgb2.g);
     try testing.expectEqual(0, rgb2.b);
     try testing.expectEqual(255, alpha2);
+}
+
+test "header read" {
+    const testing = std.testing;
+    const header_data = [_]u8{
+        0x02, 0x00, 0x00, 0x00, // width
+        0x02, 0x00, 0x00, 0x00, // height
+        0x02, 0x00, 0x00, 0x00, // frame count
+        0x00, 0x00, 0x80, 0x3F, // fps (1.0)
+        0x01, 0x00, 0x00, 0x00, // format (DXT1)
+        0x04, 0x00, 0x00, 0x00, // frame bytes
+        // Add dummy frame data
+        0x00, 0x00, 0x00, 0x00,
+        // Add address size blocks
+        0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // address=24
+        0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // size=4
+        0x1C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // address=28 
+        0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // size=4
+    };
+
+    var stream = std.io.StreamSource{ .const_buffer = std.io.fixedBufferStream(&header_data) };
+    var header = try GVVideo.load(testing.allocator, &stream);
+    defer header.deinit(testing.allocator);
+    
+    try testing.expectEqual(@as(u32, 2), header.header.width);
+    try testing.expectEqual(@as(u32, 2), header.header.height);
+    try testing.expectEqual(@as(u32, 2), header.header.frame_count);
+    try testing.expectEqual(@as(f32, 1.0), header.header.fps);
+    try testing.expectEqual(GVFormat.DXT1, header.header.format);
+    try testing.expectEqual(@as(u32, 4), header.header.frame_bytes);
+}
+
+test "duration calculation" {
+    const testing = std.testing;
+    
+    const video = GVVideo{
+        .header = .{
+            .width = 640,
+            .height = 360,
+            .frame_count = 1,
+            .fps = 30.0,
+            .format = .DXT1,
+            .frame_bytes = 115200,
+        },
+        .address_size_blocks = &[_]GVAddressSizeBlock{},
+        .reader = undefined,
+        .stream = undefined,
+        .allocator = undefined,
+    };
+    
+    const duration = video.getDuration();
+    try testing.expectEqual(@as(u64, 33333333), duration); // ~33.33ms in nanoseconds (1/30 sec)
 }
 
 test "basic GVVideo functionality" {
