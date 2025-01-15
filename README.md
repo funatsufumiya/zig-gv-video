@@ -18,5 +18,5 @@ $ zig build test
 ## Run Example
 
 ```bash
-$ zig build run
+$ ./run_example.sh
 ```

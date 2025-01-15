@@ -27,7 +27,9 @@ pub fn main() !void {
     try std.testing.expectEqual(72, video.header.frame_bytes);
     try std.testing.expectEqual(std.time.ns_per_s * 5, video.getDuration());
 
-    // get frame ([]u32 RGBA)
+    std.debug.print("video.header: {}\n", .{video.header});
+    std.debug.print("video.getDuration(): {}\n", .{video.getDuration()});
+
     var frame = try video.readFrameAt(std.time.ns_per_s * 3.5);
     try std.testing.expectEqual(w * h, frame.len);
 
