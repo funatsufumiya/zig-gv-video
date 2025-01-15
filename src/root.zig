@@ -380,6 +380,28 @@ pub fn getRgbaFromFrame(frame: []const u32, x: usize, y: usize, width: usize) RG
     @panic("Unimplemented");
 }
 
+test "seekable stream test with fixed bytes" {
+    const testing = std.testing;
+    // const stream: std.io.StreamSource = std.io.fixedBufferStream("Hello, world!");
+    var stream: std.io.StreamSource = std.io.StreamSource{ .const_buffer = std.io.fixedBufferStream("Hello, world!") };
+    const reader = stream.reader();
+
+    try testing.expectEqual(("H")[0], try reader.readByte());
+    try testing.expectEqual(("e")[0], try reader.readByte());
+    try testing.expectEqual(("l")[0], try reader.readByte());
+
+    try stream.seekTo(0);
+    try testing.expectEqual(("H")[0], try reader.readByte());
+
+    try stream.seekTo(6);
+    try testing.expectEqual((" ")[0], try reader.readByte());
+    try testing.expectEqual(("w")[0], try reader.readByte());
+
+    try stream.seekTo(4);
+    try testing.expectEqual(("o")[0], try reader.readByte());
+    try testing.expectEqual((",")[0], try reader.readByte());
+}
+
 test "rgb / rgba basic tests" {
     const testing = std.testing;
 
