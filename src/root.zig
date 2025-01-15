@@ -228,7 +228,7 @@ pub const GVVideo = struct {
     }
 
     pub fn loadFile(allocator: std.mem.Allocator, file: std.fs.File) !GVVideo {
-        return try GVVideo.loadStream(allocator, null, file);
+        return try GVVideo.loadStreamOrFile(allocator, null, file);
     }
 
     fn decodeLZ4AndDXT(self: *GVVideo, data: []const u8) ![]const u32 {
