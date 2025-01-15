@@ -402,6 +402,33 @@ test "seekable stream test with fixed bytes" {
     try testing.expectEqual((",")[0], try reader.readByte());
 }
 
+test "seekable stream test with fixed bytes 0x0, 0x1, ..." {
+    const testing = std.testing;
+    const n: u8 = 200;
+    const buffer = try testing.allocator.alloc(u8, n);
+    defer testing.allocator.free(buffer);
+
+    var i: u8 = 0;
+    while (i < buffer.len) : (i += 1) {
+        buffer[i] = i;
+    }
+
+    var stream: std.io.StreamSource = std.io.StreamSource{ .buffer = std.io.fixedBufferStream(buffer) };
+    const reader = stream.reader();
+
+    try testing.expectEqual(0x0, try reader.readByte());
+    try testing.expectEqual(0x1, try reader.readByte());
+
+    try stream.seekTo(0);
+    try testing.expectEqual(0x0, try reader.readByte());
+    try testing.expectEqual(0x1, try reader.readByte());
+
+    try stream.seekTo(0x64);
+    try testing.expectEqual(0x64, try reader.readByte());
+    try testing.expectEqual(0x65, try reader.readByte());
+}
+
+
 test "rgb / rgba basic tests" {
     const testing = std.testing;
 
