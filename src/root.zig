@@ -60,14 +60,68 @@ pub const RGBColor = struct {
 pub const GVVideo = struct {
     header: GVHeader,
     address_size_blocks: []GVAddressSizeBlock,
-    file_or_not: ?std.fs.File,
-    stream: *std.io.StreamSource,
-    reader: std.io.StreamSource.Reader,
+    stream: ?*std.io.StreamSource,
+    file: ?*std.fs.File,
+    stream_reader: ?*std.io.StreamSource.Reader,
+    file_reader: ?*std.fs.File.Reader,
     allocator: std.mem.Allocator,
 
-    fn readFloat(reader: anytype) !f32 {
-        const bytes = try reader.readBytesNoEof(4);
-        return @as(f32, @bitCast(bytes));
+    fn readFloat(self: *GVVideo) !f32 {
+        if (self.stream_reader) |reader| {
+            const bytes = try reader.readBytesNoEof(4);
+            return @as(f32, @bitCast(bytes));
+        } else if (self.file_reader) |reader| {
+            const bytes = try reader.readBytesNoEof(4);
+            return @as(f32, @bitCast(bytes));
+        }
+        unreachable;
+    }
+
+    fn readInt(self: *GVVideo, comptime T: type, endian: std.builtin.Endian) !T {
+        if (self.stream_reader) |reader| {
+            const bytes = try reader.readInt(T, endian);
+            return @as(T, @bitCast(bytes));
+        } else if (self.file_reader) |reader| {
+            const bytes = try reader.readInt(T, endian);
+            return @as(T, @bitCast(bytes));
+        }
+        unreachable;
+    }
+
+    fn readAll(self: *GVVideo, buffer: []u8) !usize {
+        if (self.stream_reader) |reader| {
+            return try reader.readAll(buffer);
+        } else if (self.file_reader) |reader| {
+            return try reader.readAll(buffer);
+        }
+        unreachable;
+    }
+
+    fn getPos(self: *GVVideo) !u64 {
+        if (self.stream) |stream| {
+            return try stream.getPos();
+        } else if (self.file) |file| {
+            return try file.getPos();
+        }
+        unreachable;
+    }
+
+    fn getEndPos(self: *GVVideo) !u64 {
+        if (self.stream) |stream| {
+            return try stream.getEndPos();
+        } else if (self.file) |file| {
+            return try file.getEndPos();
+        }
+        unreachable;
+    }
+
+    fn seekTo(self: *GVVideo, pos: u64) !void {
+        if (self.stream) |stream| {
+            return try stream.seekTo(pos);
+        } else if (self.file) |file| {
+            return try file.seekTo(pos);
+        }
+        unreachable;
     }
 
     fn decodeLZ4(self: *GVVideo, data: []const u8) ![]const u8 {
@@ -78,18 +132,16 @@ pub const GVVideo = struct {
         return lz4_decoded_data;
     }
 
-    pub fn load(allocator: std.mem.Allocator, stream: *std.io.StreamSource) !GVVideo {
-        const reader = stream.reader();
-
+    fn readHeader(self: *GVVideo) !void {
         // Read header fields
         const endian = std.builtin.Endian.little;
-        const width = try reader.readInt(u32, endian);
-        const height = try reader.readInt(u32, endian);
-        const frame_count = try reader.readInt(u32, endian);
+        const width = try self.readInt(u32, endian);
+        const height = try self.readInt(u32, endian);
+        const frame_count = try self.readInt(u32, endian);
         // const fps = @as(f32, @floatFromInt(try reader.readInt(u32, endian)));
-        const fps = try readFloat(reader);
-        const format_raw = try reader.readInt(u32, endian);
-        const frame_bytes = try reader.readInt(u32, endian);
+        const fps = try self.readFloat();
+        const format_raw = try self.readInt(u32, endian);
+        const frame_bytes = try self.readInt(u32, endian);
 
         // Convert format to enum
         const format = switch (format_raw) {
@@ -110,49 +162,73 @@ pub const GVVideo = struct {
             .frame_bytes = frame_bytes,
         };
 
+        self.header = header;
+    }
+
+    fn readAddressSizeBlocks(self: *GVVideo, frame_count: u32) !void {
         // Get current position for address blocks calculation
-        const current_pos = try stream.getPos();
-        // direct specify the position
+        const current_pos = try self.getPos();
 
         // Seek to address blocks (located at end of file)
-        const end_pos = try stream.getEndPos();
+        const end_pos = try self.getEndPos();
         const blocks_offset = end_pos - (@as(u64, frame_count) * @sizeOf(GVAddressSizeBlock));
-        try stream.seekTo(blocks_offset);
+
+        try self.seekTo(blocks_offset);
 
         // Read address size blocks
-        var blocks = try allocator.alloc(GVAddressSizeBlock, frame_count);
+        var blocks = try self.allocator.alloc(GVAddressSizeBlock, frame_count);
         var i: usize = 0;
         while (i < frame_count) : (i += 1) {
             blocks[i] = .{
-                .address = try reader.readInt(u64, endian),
-                .size = try reader.readInt(u64, endian),
+                .address = try self.readInt(u64, .little),
+                .size = try self.readInt(u64, .little),
             };
         }
 
         // Seek back to data start
-        try stream.seekTo(current_pos);
-
-        return GVVideo{
-            .header = header,
-            .address_size_blocks = blocks,
-            .stream = stream,
-            .reader = reader,
-            .file_or_not = null,
-            .allocator = allocator,
-        };
+        try self.seekTo(current_pos);
     }
 
-    pub fn loadFromFile(allocator: std.mem.Allocator, path: []const u8) !GVVideo {
-        // Open the file with read-only access
-        const file = try std.fs.cwd().openFile(path, .{});
-        
-        // Create a stream source from the file
-        var stream = std.io.StreamSource{ .file = file };
-        
-        // Use the existing load function with a general purpose allocator
-        var gv = try GVVideo.load(allocator, &stream);
-        gv.file_or_not = file;
-        return gv;
+    pub fn loadStream(allocator: std.mem.Allocator, stream: *std.io.StreamSource) !GVVideo {
+        return try loadStreamOrFile(allocator, stream, null);
+    }
+
+    fn loadStreamOrFile(allocator: std.mem.Allocator, stream: ?*std.io.StreamSource, file: ?*std.fs.File) !GVVideo {
+        assert(stream != null or file != null);
+
+        var gvvideo: GVVideo = undefined;
+        if (stream != null) {
+            var reader = stream.?.reader();
+            gvvideo = GVVideo {
+                .header = undefined,
+                .address_size_blocks = undefined,
+                .stream = stream,
+                .stream_reader = &reader,
+                .file = null,
+                .file_reader = null,
+                .allocator = allocator,
+            };
+        } else { // file
+            var reader = file.?.reader();
+            gvvideo = GVVideo {
+                .header = undefined,
+                .address_size_blocks = undefined,
+                .stream = null,
+                .stream_reader = null,
+                .file = file,
+                .file_reader = &reader,
+                .allocator = allocator,
+            };
+        }
+
+        try readHeader(&gvvideo);
+        try readAddressSizeBlocks(&gvvideo, gvvideo.header.frame_count);
+
+        return gvvideo;
+    }
+
+    pub fn loadFile(allocator: std.mem.Allocator, file: std.fs.File) !GVVideo {
+        return try GVVideo.loadStream(allocator, null, file);
     }
 
     fn decodeLZ4AndDXT(self: *GVVideo, data: []const u8) ![]const u32 {
@@ -215,29 +291,50 @@ pub const GVVideo = struct {
         }
     }
 
-    // decompress lz4 block and decode dxt, then return decompressed frame data (BGRA u32)
-    pub fn readFrame(self: *GVVideo, frame_id: u32) ![]const u32 {
+    /// only for testing
+    pub fn _readFrameRawAlloc(self: *GVVideo, frame_id: u32) ![]const u8 {
+        return try self.readFrameRawAlloc(frame_id);
+    }
+
+    fn readFrameRawAlloc(self: *GVVideo, frame_id: u32) ![]const u8 {
         if (frame_id >= self.header.frame_count) {
             return error.EndOfVideo;
         }
 
         // std.debug.print("frame_id: {}\n", .{frame_id});
-        // std.debug.print("debug: {}\n", @as(i64, @intCast(-(self.header.frame_count * 16)))  + @as(i64, @intCast(frame_id * 16)));
 
         const block = self.address_size_blocks[frame_id];
         const address = block.address;
         const size = block.size;
 
-        const data: []u8 = try self.allocator.alloc(u8, size);
-        defer self.allocator.free(data);
+        std.debug.print("address: {}\n", .{address});
+        std.debug.print("size: {}\n", .{size});
 
-        try self.stream.seekTo(address);
-        if (try self.stream.getPos() != address) {
+        const data: []u8 = try self.allocator.alloc(u8, size);
+        assert(data.len == size);
+
+        try self.seekTo(address);
+        if (try self.getPos() != address) {
             return error.ErrorSeekingFrameData;
         }
-        if (try self.reader.readAll(data) != size) {
+
+        const end = try self.getEndPos();
+        std.debug.print("end: {}\n", .{end});
+        std.debug.print("end - address: {}\n", .{end - address});
+
+        if (try self.readAll(data) != size) {
             return error.ErrorReadingFrameData;
         }
+
+        return data;
+    }
+        
+
+    // decompress lz4 block and decode dxt, then return decompressed frame data (BGRA u32)
+    pub fn readFrame(self: *GVVideo, frame_id: u32) ![]const u32 {
+        const data = try self.readFrameRawAlloc(frame_id);
+        defer self.allocator.free(data);
+
         return self.decodeLZ4AndDXT(data);
     }
 
@@ -267,42 +364,9 @@ pub const GVVideo = struct {
 
     /// decompress lz4 block, then return compressed frame data (BC1, BC2, BC3, BC7)
     pub fn readFrameCompressed(self: *GVVideo, frame_id: u32) ![]const u8 {
-        if (frame_id >= self.header.frame_count) {
-            return error.EndOfVideo;
-        }
-
-        const block = self.address_size_blocks[frame_id];
-        // std.debug.print("frame_id: {}\n", .{frame_id});
-        // std.debug.print("block.address: {}\n", .{block.address});
-        // std.debug.print("block.size: {}\n", .{block.size});
-        const address = block.address;
-        const size = block.size;
-
-        try self.stream.seekTo(address);
-        if (try self.stream.getPos() != address) {
-            return error.ErrorSeekingFrameData;
-        }
-
-        // print EOF - pos
-        std.debug.print("EOF: {}\n", .{try self.stream.getEndPos()});
-        std.debug.print("EOF - pos: {}\n", .{(try self.stream.getEndPos()) - address});
-        std.debug.print("expected size: {}\n", .{size});
-
-        const data = self.reader.readAllAlloc(self.allocator, size) catch |err| {   
-            std.debug.print("error: {}\n", .{err});
-            return err;
-        };
-
-        // const data = try self.readAllAlloc(size);
+        const data = try self.readFrameRawAlloc(frame_id);
         defer self.allocator.free(data);
 
-        // const data = try self.reader.readAllAlloc(self.allocator, size);
-        std.debug.print("data_size: {}\n", .{data.len});
-
-        if (data.len != size) {
-        // if (try self.reader.readAll(data) != size) {
-            return error.ErrorReadingFrameData;
-        }
         return self.decodeLZ4(data);
     }
 
@@ -348,10 +412,6 @@ pub const GVVideo = struct {
 
     pub fn deinit(self: *GVVideo, allocator: std.mem.Allocator) void {
         allocator.free(self.address_size_blocks);
-
-        if (self.file_or_not) |file| {
-            file.close();
-        }
     }
 };
 
@@ -488,7 +548,7 @@ test "header read" {
     };
 
     var stream = std.io.StreamSource{ .const_buffer = std.io.fixedBufferStream(&header_data) };
-    var header = try GVVideo.load(testing.allocator, &stream);
+    var header = try GVVideo.loadStream(testing.allocator, &stream);
     defer header.deinit(testing.allocator);
     
     try testing.expectEqual(@as(u32, 2), header.header.width);
@@ -502,7 +562,10 @@ test "header read" {
 test "header read of test.gv" {
     const testing = std.testing;
 
-    var video = try GVVideo.loadFromFile(testing.allocator, "test_asset/test.gv");
+    var file = try std.fs.cwd().openFile("test_asset/test.gv", .{});
+    defer file.close();
+
+    var video = try GVVideo.loadFile(testing.allocator, file);
     defer video.deinit(testing.allocator);
 
     // header assertions
@@ -546,8 +609,26 @@ test "read rgba" {
     // try testing.expectEqual(RGBAColor{ .r = 62, .g = 0, .b = 118, .a = 255 }, getRgba(frame[300 + 300 * 640]));
 }
 
-test "read compressed and _decodeDXT" {
-    return error.SkipZigTest;
+test "read raw" {
+    // return error.SkipZigTest;
+
+    const testing = std.testing;
+    var file = try std.fs.cwd().openFile("test_asset/test.gv", .{});
+    defer file.close();
+
+    var video = try GVVideo.loadFile(testing.allocator, file);
+    defer video.deinit(testing.allocator);
+
+    try testing.expectEqual(1, video.address_size_blocks.len);
+    try testing.expectEqual(@as(u64, 24), video.address_size_blocks[0].address);
+    try testing.expectEqual(@as(u64, 1507), video.address_size_blocks[0].size);
+
+    const frame = try video._readFrameRawAlloc(0);
+    defer testing.allocator.free(frame);
+}
+
+// test "read compressed and _decodeDXT" {
+//     // return error.SkipZigTest;
 
 //     const testing = std.testing;
 //     var video = try GVVideo.loadFromFile(testing.allocator, "test_asset/test.gv");
@@ -556,11 +637,11 @@ test "read compressed and _decodeDXT" {
 //     const frame = try video.readFrameCompressed(0);
 //     defer testing.allocator.free(frame);
 
-//     const frame_raw = try video._decodeDXT(frame);
-//     defer testing.allocator.free(frame_raw);
+//     // const frame_raw = try video._decodeDXT(frame);
+//     // defer testing.allocator.free(frame_raw);
 
-//     try testing.expectEqual(640 * 360, frame_raw.len);
-}
+//     // try testing.expectEqual(640 * 360, frame_raw.len);
+// }
 
 test "duration calculation" {
     const testing = std.testing;
@@ -577,7 +658,6 @@ test "duration calculation" {
         .address_size_blocks = &[_]GVAddressSizeBlock{},
         .stream = undefined,
         .reader = undefined,
-        .file_or_not = null,
         .allocator = undefined,
     };
     
