@@ -640,6 +640,10 @@ test "read raw" {
     defer testing.allocator.free(frame);
 
     try testing.expectEqual(1507, frame.len);
+
+    try testing.expectEqual(@as(u8, 0x8F), frame[0]);
+    try testing.expectEqual(@as(u8, 0xF7), frame[1]);
+    try testing.expectEqual(@as(u8, 0xAA), frame[1506]);
 }
 
 test "read compressed and _decodeDXT" {
