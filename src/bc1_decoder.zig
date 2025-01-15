@@ -1,4 +1,5 @@
 // ported from https://github.com/UniversalGameExtraction/texture2ddecoder/blob/master/src/bcn/bc1.rs
+// WARNING: IMCOMPLETED
 
 const std = @import("std");
 

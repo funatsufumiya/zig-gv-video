@@ -1,4 +1,5 @@
 // ported from https://github.com/UniversalGameExtraction/texture2ddecoder/blob/master/src/bcn/bc7.rs
+// WARNING: IMCOMPLETED
 
 const std = @import("std");
 const bptc = @import("bptc_consts.zig");

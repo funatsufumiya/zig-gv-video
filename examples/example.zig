@@ -30,6 +30,12 @@ pub fn main() !void {
     // get frame ([]u32 RGBA)
     var frame = try video.readFrameAt(std.time.ns_per_s * 3.5);
     try std.testing.expectEqual(w * h, frame.len);
+
+    std.debug.print("frame[0]: 0x{x}\n", .{frame[0]});
+    std.debug.print("frame[6]: 0x{x}\n", .{frame[6]});
+    std.debug.print("frame[6 + w*6]: 0x{x}\n", .{frame[6 + w*6]});
+    std.debug.print("frame[0 + w*6]: 0x{x}\n", .{frame[0 + w*6]});
+    
     try std.testing.expectEqual(0xFFFF0000, frame[0]); // x,y=0,0: red (0xAARRGGBB)
     try std.testing.expectEqual(0xFF0000FF, frame[6]); // x,y=6,0: blue (0xAARRGGBB)
     try std.testing.expectEqual(0xFF00FF00, frame[0 + w*6]); // x,y=0,6: green (0xAARRGGBB)

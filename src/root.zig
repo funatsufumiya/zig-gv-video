@@ -611,6 +611,7 @@ test "read rgba" {
     try testing.expectEqual(@as(u32, 360), video.getHeight());
     try testing.expectEqual(@as(u32, 1), video.getFrameCount());
     try testing.expectApproxEqAbs(30.0, video.getFps(), 0.001);
+    try testing.expectEqual(.DXT1, video.getFormat());
 
     const frame = try video.readFrame(0);
     defer testing.allocator.free(frame);
