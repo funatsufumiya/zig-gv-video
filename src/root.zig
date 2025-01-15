@@ -638,23 +638,28 @@ test "read raw" {
 
     const frame = try video._readFrameRawAlloc(0);
     defer testing.allocator.free(frame);
+
+    try testing.expectEqual(1507, frame.len);
 }
 
-// test "read compressed and _decodeDXT" {
-//     // return error.SkipZigTest;
+test "read compressed and _decodeDXT" {
+    return error.SkipZigTest;
 
-//     const testing = std.testing;
-//     var video = try GVVideo.loadFromFile(testing.allocator, "test_asset/test.gv");
-//     defer video.deinit();
+    // const testing = std.testing;
+    // var file = try std.fs.cwd().openFile("test_asset/test.gv", .{});
+    // defer file.close();
 
-//     const frame = try video.readFrameCompressed(0);
-//     defer testing.allocator.free(frame);
+    // var video = try GVVideo.loadFile(testing.allocator, &file);
+    // defer video.deinit();
 
-//     // const frame_raw = try video._decodeDXT(frame);
-//     // defer testing.allocator.free(frame_raw);
+    // const frame = try video.readFrameCompressed(0);
+    // defer testing.allocator.free(frame);
 
-//     // try testing.expectEqual(640 * 360, frame_raw.len);
-// }
+    // const frame_raw = try video._decodeDXT(frame);
+    // defer testing.allocator.free(frame_raw);
+
+    // try testing.expectEqual(640 * 360, frame_raw.len);
+}
 
 test "duration calculation" {
     const testing = std.testing;
