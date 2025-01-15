@@ -249,8 +249,9 @@ pub const GVVideo = struct {
         const format = self.header.format;
         const uncompressed_size_u8: usize = @as(usize, width) * @as(usize, height) * 4;
         const lz4_decoded_data: []const u8 = try lz4.Standard.decompress(self.allocator, data, uncompressed_size_u8);
+        defer self.allocator.free(lz4_decoded_data);
 
-        const size: usize = width * height;
+        const size: usize = @as(usize, width) * @as(usize, height);
         const result: []u32 = try self.allocator.alloc(u32, size);
 
         switch (format) {
@@ -279,8 +280,8 @@ pub const GVVideo = struct {
         const height: u16 = @intCast(self.header.height);
         const format = self.header.format;
         const uncompressed_size_u32: usize = @as(usize, width) * @as(usize, height);
-        const uncompressed_size_u8: usize = uncompressed_size_u32 * 4;
-        const lz4_decoded = try lz4.Standard.decompress(self.allocator, data, uncompressed_size_u8);
+        // const uncompressed_size_u8: usize = uncompressed_size_u32 * 4;
+        const lz4_decoded = data;
         const result: []u32 = try self.allocator.alloc(u32, uncompressed_size_u32);
         switch (format) {
             .DXT1 => {
@@ -647,22 +648,30 @@ test "read raw" {
 }
 
 test "read compressed and _decodeDXT" {
-    return error.SkipZigTest;
+    // return error.SkipZigTest;
 
-    // const testing = std.testing;
-    // var file = try std.fs.cwd().openFile("test_asset/test.gv", .{});
-    // defer file.close();
+    const testing = std.testing;
+    var file = try std.fs.cwd().openFile("test_asset/test.gv", .{});
+    defer file.close();
 
-    // var video = try GVVideo.loadFile(testing.allocator, &file);
-    // defer video.deinit();
+    var video = try GVVideo.loadFile(testing.allocator, &file);
+    defer video.deinit();
 
-    // const frame = try video.readFrameCompressed(0);
-    // defer testing.allocator.free(frame);
+    const frame_bc = try video.readFrameCompressed(0);
+    defer testing.allocator.free(frame_bc);
 
-    // const frame_raw = try video._decodeDXT(frame);
-    // defer testing.allocator.free(frame_raw);
+    const frame_raw_right = try video.readFrame(0);
+    defer testing.allocator.free(frame_raw_right);
 
-    // try testing.expectEqual(640 * 360, frame_raw.len);
+    const frame_raw = try video._decodeDXT(frame_bc);
+    defer testing.allocator.free(frame_raw);
+
+    try testing.expectEqual(640 * 360, frame_raw.len);
+    try testing.expectEqual(frame_raw_right.len, frame_raw.len);
+    try testing.expectEqual(frame_raw_right[0], frame_raw[0]);
+    try testing.expectEqual(frame_raw_right[100], frame_raw[100]);
+    try testing.expectEqual(frame_raw_right[1000], frame_raw[1000]);
+
 }
 
 test "duration calculation" {
