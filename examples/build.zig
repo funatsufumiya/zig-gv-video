@@ -4,10 +4,6 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const ezdxt_module = b.createModule(.{
-        .root_source_file = b.path("../ezdxt/src/main.zig"),
-    });
-
     const lz4_dependency = b.dependency("lz4", .{
         .target = target,
         .optimize = optimize,
@@ -21,7 +17,6 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("../src/root.zig"),
         .imports = &.{
             .{ .name = "lz4", .module = ziglz4_module },
-            .{ .name = "ezdxt", .module = ezdxt_module },
         },
     });
 

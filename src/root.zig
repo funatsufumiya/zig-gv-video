@@ -15,7 +15,11 @@
 const std = @import("std");
 
 const lz4 = @import("lz4");
-const ezdxt = @import("ezdxt");
+// const ezdxt = @import("ezdxt");
+const bc1_decoder = @import("bc1_decoder.zig");
+const bc2_decoder = @import("bc2_decoder.zig");
+const bc3_decoder = @import("bc3_decoder.zig");
+const bc7_decoder = @import("bc7_decoder.zig");
 
 pub const GVFormat = enum(u32) {
     DXT1 = 1,
@@ -160,23 +164,20 @@ pub const GVVideo = struct {
 
         switch (format) {
             .DXT1 => {
-                ezdxt.dxt1.decodeImageBgra(lz4_decoded_data, width, height, result);
-                // return @as([]const u32, result);
+                bc1_decoder.decodeBc1Block(lz4_decoded_data, result);
                 return result;
             },
             .DXT3 => {
-                ezdxt.dxt3.decodeImageBgra(lz4_decoded_data, width, height, result);
-                // return @as([]const u32, result);
+                bc2_decoder.decodeBc2Block(lz4_decoded_data, result);
                 return result;
             },
             .DXT5 => {
-                ezdxt.dxt5.decodeImageBgra(lz4_decoded_data, width, height, result);
-                // return @as([]const u32, result);
+                bc3_decoder.decodeBc3Block(lz4_decoded_data, result);
                 return result;
             },
             .BC7 => {
-                // currently bc7 is not supported
-                return error.InvalidFormat;
+                bc7_decoder.decodeBc7Block(lz4_decoded_data, result);
+                return result;
             }
         }
     }

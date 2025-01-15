@@ -15,10 +15,6 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
-    const ezdxt_module = b.createModule(.{
-        .root_source_file = b.path("ezdxt/src/main.zig"),
-    });
-
     const lz4_dependency = b.dependency("lz4", .{
         .target = target,
         .optimize = optimize,
@@ -37,7 +33,6 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     lib.linkLibrary(lz4_dependency.artifact("lz4"));
-    lib.root_module.addImport("ezdxt", ezdxt_module);
     lib.root_module.addImport("lz4", ziglz4_module);
 
     // This declares intent for the library to be installed into the standard
@@ -49,7 +44,6 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/root.zig"),
         .imports = &.{
             .{ .name = "lz4", .module = ziglz4_module },
-            .{ .name = "ezdxt", .module = ezdxt_module },
         },
     });
 
@@ -61,7 +55,6 @@ pub fn build(b: *std.Build) void {
     });
     exe.linkLibrary(lz4_dependency.artifact("lz4"));
     exe.root_module.addImport("gvvideo", gvvideo_module);
-    exe.root_module.addImport("ezdxt", ezdxt_module);
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
